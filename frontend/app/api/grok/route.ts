@@ -13,7 +13,7 @@ export async function POST(req: Request) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "grok-2-latest",
+        model: "grok-beta",
         messages: [
           { role: "system", content: "Generate a fun AI duel question with A/B options." },
           { role: "user", content: body.prompt || "Generate a duel question." }
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     const data = await res.json();
 
     return Response.json({
-      question: data.choices?.[0]?.message?.content || "Fallback AI question"
+      question: data.choices?.[0]?.message?.content || "Fallback AI question",
     });
 
   } catch (e: any) {
