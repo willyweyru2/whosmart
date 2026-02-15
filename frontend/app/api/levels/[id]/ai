@@ -1,0 +1,26 @@
+import OpenAI from "openai";
+import { NextResponse } from "next/server";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+export async function POST(req: Request) {
+  const { a, b } = await req.json();
+
+  const prompt = `
+Who is smarter? Answer ONLY "A" or "B".
+
+A: ${a}
+B: ${b}
+`;
+
+  const res = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [{ role: "user", content: prompt }],
+    max_tokens: 5,
+  });
+
+  const choice = res.choices[0].message.content?.trim();
+  return NextResponse.json({ choice });
+}

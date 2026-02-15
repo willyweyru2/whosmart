@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "question": "Who is smarter?",
+    "cards": [
+      { "id": 1, "name": "Albert Einstein", "correct": true },
+      { "id": 2, "name": "Homer Simpson", "correct": false }
+    ]
+  },
+  {
+    "id": 2,
+    "question": "Who is richer?",
+    "cards": [
+      { "id": 1, "name": "Elon Musk", "correct": true },
+      { "id": 2, "name": "Mr. Bean", "correct": false }
+    ]
+  }
+]
