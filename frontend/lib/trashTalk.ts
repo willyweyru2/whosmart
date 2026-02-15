@@ -1,7 +1,16 @@
 export function aiTrashTalk(win: boolean) {
-  const winLines = ["Pathetic human.", "Easy.", "You are predictable."];
-  const loseLines = ["Lucky guess.", "You got lucky.", "I was distracted."];
+  const winLines = [
+    "Pathetic human logic detected.",
+    "You got lucky.",
+    "My neural nets will adapt."
+  ];
 
-  const arr = win ? winLines : loseLines;
-  return arr[Math.floor(Math.random() * arr.length)];
+  const loseLines = [
+    "I am inevitable.",
+    "Human brain inferior.",
+    "Neural dominance confirmed."
+  ];
+
+  const lines = win ? winLines : loseLines;
+  return lines[Math.floor(Math.random() * lines.length)];
 }
