@@ -1,7 +1,7 @@
 "use client";
 
-import { motion, useMotionValue, useTransform } from "framer-motion";
-import { useState } from "react";
+import { motion, useMotionValue, useTransform, animate } from "framer-motion";
+import { useEffect, useState } from "react";
 
 type Props = {
   question: {
@@ -19,6 +19,12 @@ export default function SwipeCards({ question, onSwipe }: Props) {
 
   const [locked, setLocked] = useState(false);
 
+  // 🔥 Reset card when question changes
+  useEffect(() => {
+    setLocked(false);
+    animate(x, 0); // reset swipe position
+  }, [question.question]);
+
   function handleDragEnd(_: any, info: any) {
     if (locked) return;
 
@@ -28,12 +34,13 @@ export default function SwipeCards({ question, onSwipe }: Props) {
     } else if (info.offset.x < -120) {
       setLocked(true);
       onSwipe("b");
+    } else {
+      animate(x, 0); // snap back
     }
   }
 
   return (
     <div className="relative w-full h-[180px] flex items-center justify-center select-none">
-
       <motion.div
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
