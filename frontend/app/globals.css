@@ -3,55 +3,56 @@
 @tailwind utilities;
 
 /* ============================= */
-/* BASE THEME */
+/* BASE RESET */
 /* ============================= */
 
 html, body {
   padding: 0;
   margin: 0;
-  background: #0b0d10;
+  background: #000;
   color: #e5e7eb;
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
   min-height: 100%;
+  overscroll-behavior: none;
 }
 
 /* ============================= */
-/* SUBTLE GRID BACKGROUND */
+/* CYBER GRID BACKGROUND */
 /* ============================= */
 
-.bg-grid {
+.cyber-grid {
   background-image:
-    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
-  background-size: 40px 40px;
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
 }
 
 /* ============================= */
-/* AI GLASS CARD (MAIN GAME UI) */
+/* AI GLASS CARD (GAME UI) */
 /* ============================= */
 
 .ai-card {
-  background: rgba(18, 18, 20, 0.85);
+  background: rgba(12, 12, 16, 0.72);
   border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 20px;
-  padding: 20px;
-  backdrop-filter: blur(16px);
-  box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+  border-radius: 22px;
+  padding: 16px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 0 40px rgba(140,0,255,0.12);
 }
 
 /* ============================= */
-/* TITLES */
+/* NEON TITLES */
 /* ============================= */
 
-.app-title {
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: -0.6px;
+.neon-title {
+  font-weight: 800;
+  font-size: 1.4rem;
+  text-shadow: 0 0 12px rgba(180,0,255,0.6);
 }
 
-.app-sub {
-  font-size: 0.9rem;
-  color: #9ca3af;
+.neon-sub {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  color: #a78bfa;
 }
 
 /* ============================= */
@@ -59,10 +60,10 @@ html, body {
 /* ============================= */
 
 .score-box {
-  background: #141414;
+  background: #0b0b0f;
   padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 999px;
+  font-size: 13px;
   border: 1px solid rgba(255,255,255,0.06);
 }
 
@@ -75,7 +76,7 @@ html, body {
   border-radius: 12px;
   padding: 12px;
   font-weight: 600;
-  transition: 0.2s ease;
+  transition: 0.15s ease;
 }
 
 .btn-secondary {
@@ -83,46 +84,42 @@ html, body {
   border-radius: 12px;
   padding: 12px;
   font-weight: 600;
-  transition: 0.2s ease;
+  transition: 0.15s ease;
 }
 
 .btn-primary:hover,
 .btn-secondary:hover {
-  opacity: 0.85;
+  opacity: 0.9;
   transform: translateY(-1px);
 }
 
-/* Glow hover effect */
-.glow-btn {
-  font-weight: 600;
-  transition: 0.15s ease;
-}
-
+/* Glow hover */
 .glow-btn:hover {
   transform: scale(1.03);
-  box-shadow: 0 0 20px rgba(59,130,246,0.4);
+  box-shadow: 0 0 20px rgba(59,130,246,0.35);
 }
 
 /* ============================= */
-/* TEXT UTILITY */
+/* PHONE FRAME GLOW */
+/* ============================= */
+
+.phone-glow {
+  box-shadow: 0 0 60px rgba(140, 0, 255, 0.18);
+}
+
+/* ============================= */
+/* TEXT UTILITIES */
 /* ============================= */
 
 .text-muted {
   color: #9ca3af;
 }
-
-/* ============================= */
-/* PHONE FRAME CENTERING */
-/* ============================= */
-
-.phone-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
+@keyframes neonPulse {
+  0% { box-shadow: 0 0 20px rgba(140,0,255,0.1); }
+  50% { box-shadow: 0 0 40px rgba(140,0,255,0.3); }
+  100% { box-shadow: 0 0 20px rgba(140,0,255,0.1); }
 }
 
-body {
-  background: radial-gradient(circle at top, #1a0033, #000);
-  color: white;
+.ai-card {
+  animation: neonPulse 4s infinite;
 }

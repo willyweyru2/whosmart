@@ -8,7 +8,6 @@ import { getProgress, saveProgress } from "@/lib/progress";
 import { APP_NAME } from "@/lib/config";
 import GameOverModal from "./GameOverModal";
 import SwipeCards from "./SwipeCards";
-import confetti from "canvas-confetti";
 
 type Question = {
   question: string;
@@ -38,27 +37,9 @@ export default function DuelGame() {
   const [aiThinking, setAiThinking] = useState(false);
   const [round, setRound] = useState(1);
   const [gameOver, setGameOver] = useState(false);
-
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
   const [liveText, setLiveText] = useState("Thinking...");
 
-useEffect(() => {
-  async function load() {
-    setLiveText("🧠 AI thinking...");
-    const raw = await streamGrokQuestion(setLiveText);
-
-    // Simple fallback parser
-    setQuestion({
-      question: raw.slice(0, 200),
-      a: "Option A",
-      b: "Option B",
-      correct: Math.random() > 0.5 ? "a" : "b"
-    });
-  }
-  load();
-}, [difficulty]);
-
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load progress
   useEffect(() => {
@@ -85,7 +66,7 @@ useEffect(() => {
       : 0.99;
   }
 
-  // Fallback questions
+  // Local fallback questions
   function fallbackQuestion(): Question {
     const pool = [
       { question: "Is intelligence more powerful than money?", a: "Yes", b: "No", correct: "a" },
@@ -95,58 +76,84 @@ useEffect(() => {
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
-  // Fetch Grok Question (Node runtime API)
-  async function getGrokQuestion() {
-  const res = await fetch("/api/grok", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt: "Generate a duel question" })
-  });
+  // Fetch Grok question (safe)
+  async function getGrokQuestion(): Promise<Question> {
+    try {
+      const res = await fetch("/api/grok", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: "Generate a duel question JSON" }),
+      });
 
-  const data = await res.json();
-  console.log("QUESTION:", data);
+      const data = await res.json();
+      if (!data?.question) throw new Error("Invalid AI response");
 
-  return {
-    question: data.question,
-    a: "Option A",
-    b: "Option B",
-    correct: Math.random() > 0.5 ? "a" : "b"
-  };
-}
-
-
-  // Load first question & on difficulty change
-  useEffect(() => {
-    async function load() {
-      const q = await getGrokQuestion();
-      setQuestion(q);
-      setRound(1);
+      return {
+        question: data.question,
+        a: data.a || "Option A",
+        b: data.b || "Option B",
+        correct: data.correct === "b" ? "b" : "a",
+      };
+    } catch (e) {
+      console.error("AI failed, using fallback:", e);
+      return fallbackQuestion();
     }
-    load();
-  }, [difficulty]);
-
-  async function streamGrokQuestion(setLiveText: (t: string) => void) {
-  const res = await fetch("/api/grok-stream", {
-    method: "POST",
-    body: JSON.stringify({
-      prompt: "Generate a duel question with A and B options. Return JSON."
-    }),
-  });
-
-  const reader = res.body?.getReader();
-  const decoder = new TextDecoder();
-  let full = "";
-
-  while (true) {
-    const { done, value } = await reader!.read();
-    if (done) break;
-    const chunk = decoder.decode(value);
-    full += chunk;
-    setLiveText(full); // 🔥 LIVE UI UPDATE
   }
 
-  return full;
-}
+  // Streaming (optional UI effect)
+  async function streamGrokQuestion(setLiveText: (t: string) => void) {
+    try {
+      const res = await fetch("/api/grok-stream", {
+        method: "POST",
+        body: JSON.stringify({ prompt: "Generate duel question" }),
+      });
+
+      if (!res.body) return "";
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let full = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        full += chunk;
+        setLiveText(full);
+      }
+
+      return full;
+    } catch {
+      return "";
+    }
+  }
+
+  // Load question on difficulty change
+  useEffect(() => {
+    let mounted = true;
+
+    async function load() {
+      setLiveText("🧠 AI thinking...");
+      await streamGrokQuestion(setLiveText);
+      const q = await getGrokQuestion();
+      if (mounted) {
+        setQuestion(q);
+        setRound(1);
+      }
+    }
+
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [difficulty]);
+
+  // Fire confetti safely (NO SSR CRASH)
+  async function fireConfetti() {
+    if (typeof window === "undefined") return;
+    const confetti = (await import("canvas-confetti")).default;
+    confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
+  }
 
   // Swipe handler
   async function choose(choice: "a" | "b") {
@@ -154,9 +161,9 @@ useEffect(() => {
     setLocked(true);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
-    // AI thinking delay
     setAiThinking(true);
-    await new Promise((r) => setTimeout(r, 700));
+    await new Promise((r) => setTimeout(r, 600));
+
     const ai = aiDecision(question, getIQ());
     setAiThinking(false);
 
@@ -170,28 +177,23 @@ useEffect(() => {
       newPlayer++;
       setPlayerScore(newPlayer);
       setMsg("YOU WIN 🧠");
-      confetti({ particleCount: 150, spread: 80 });
-    } 
-    else if (ai === correct && choice !== correct) {
+      fireConfetti();
+    } else if (ai === correct && choice !== correct) {
       newAI++;
       setAiScore(newAI);
       setMsg("AI DOMINATES 🤖");
-    } 
-    else {
+    } else {
       setMsg("DRAW ⚔️");
     }
 
-    // Trash talk
     setMsg((m) => m + " " + aiTrashTalk(win));
     getHybridTrashTalk(newPlayer, newAI).then(setTaunt);
 
-    // Game over
     if (newPlayer >= 10 || newAI >= 10) {
       setGameOver(true);
       return;
     }
 
-    // Next question
     timeoutRef.current = setTimeout(async () => {
       const next = await getGrokQuestion();
       setQuestion(next);
@@ -207,7 +209,7 @@ useEffect(() => {
   }
 
   const q: Question = question || {
-    question: "🧠 AI loading neural duel...",
+    question: liveText || "🧠 Loading neural duel...",
     a: "...",
     b: "...",
     correct: "a",
@@ -220,7 +222,6 @@ useEffect(() => {
         <h1 className="text-xl font-bold">{APP_NAME} Duel Arena</h1>
         <p className="text-xs text-purple-400">AI Personality: {personality}</p>
 
-        {/* Difficulty */}
         <select
           value={difficulty}
           onChange={(e) => setDifficulty(e.target.value as any)}
@@ -232,14 +233,12 @@ useEffect(() => {
           <option value="god">God Mode 👑</option>
         </select>
 
-        {/* Score HUD */}
         <div className="flex justify-between items-center text-lg font-bold">
           <div className="bg-blue-600 px-3 py-1 rounded-full animate-pulse">👤 {playerScore}</div>
           <div className="text-purple-400 text-sm">ROUND {round}</div>
           <div className="bg-red-600 px-3 py-1 rounded-full animate-pulse">🤖 {aiScore}</div>
         </div>
 
-        {/* Swipe Cards */}
         <SwipeCards question={q} onSwipe={choose} />
 
         {aiThinking && <p className="italic text-gray-400">AI thinking...</p>}

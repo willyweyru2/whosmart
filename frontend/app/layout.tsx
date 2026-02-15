@@ -4,7 +4,7 @@ import { Inter } from "next/font/google";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "WhoSmart AI Duel",
   description: "Who is smarter? You vs AI Brain Clone.",
 };
@@ -16,31 +16,21 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body
-        className={`${inter.className} bg-black text-white min-h-screen flex flex-col`}
-      >
-        {/* Background Arena */}
-        <div className="fixed inset-0 bg-gradient-to-br from-purple-900 via-black to-cyan-900 opacity-40 blur-3xl" />
-        <div className="cyber-grid" />
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+      </head>
 
+      <body className={`${inter.className} bg-black text-white overflow-hidden`}>
 
-        {/* App Shell */}
-        <header className="z-10 p-4 text-center border-b border-zinc-800">
-          <h1 className="text-2xl font-bold tracking-wide">
-            🧠 Who's smarter Duel Arena
-          </h1>
-          <p className="text-xs text-zinc-400">
-            AI Personality Battles • Self-Cloning Brain
-          </p>
-        </header>
+        {/* Cyber Background (lightweight) */}
+        <div className="fixed inset-0 bg-gradient-to-br from-purple-900/40 via-black to-cyan-900/40" />
+        <div className="fixed inset-0 pointer-events-none cyber-grid opacity-20" />
 
-        <main className="z-10 flex-1 flex items-center justify-center">
+        {/* App Render */}
+        <div className="relative z-10 h-screen w-screen">
           {children}
-        </main>
+        </div>
 
-        <footer className="z-10 text-center text-xs p-2 text-zinc-500 border-t border-zinc-800">
-          GPT Brain Clone v0.1 • WhoSmart Labs
-        </footer>
       </body>
     </html>
   );
