@@ -2,7 +2,8 @@
 
 import DuelGame from "./components/DuelGame";
 import PhoneFrame from "./components/PhoneFrame";
-import { APP_NAME, TAGLINE } from "@/lib/config";
+import { APP_NAME } from "@/lib/config";
+const TAGLINE = "Self-Cloning Brain Battles";
 
 export default function Page() {
   return (
