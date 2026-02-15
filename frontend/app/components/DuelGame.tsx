@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { aiDecision } from "@/lib/aiDecision";
-import { getHybridTrashTalk } from "@/lib/hybridTrashTalk";
-import { aiTrashTalk } from "@/lib/trashTalk";
-import { getProgress, saveProgress } from "@/lib/progress";
-import { APP_NAME } from "@/lib/config";
+import { aiDecision } from "../../lib/aiDecision";
+import { getHybridTrashTalk } from "../../lib/hybridTrashTalk";
+import { aiTrashTalk } from "../../lib/trashTalk";
+import { getProgress, saveProgress } from "../../lib/progress";
+import { APP_NAME } from "../../lib/config";
 import GameOverModal from "./GameOverModal";
 import SwipeCards from "./SwipeCards";
 
