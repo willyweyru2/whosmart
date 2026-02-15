@@ -8,6 +8,7 @@ import { getProgress, saveProgress } from "../../lib/progress";
 import { APP_NAME } from "../../lib/config";
 import GameOverModal from "./GameOverModal";
 import SwipeCards from "./SwipeCards";
+import HealthBar from "./HealthBar";
 
 type Question = {
   question: string;
@@ -164,9 +165,11 @@ export default function DuelGame() {
   }
 
   function restartGame() {
-    localStorage.clear();
-    location.reload();
-  }
+  setPlayerHP(100);
+  setAiHP(100);
+  setGameOver(false);
+}
+
 
   const q: Question = question || {
     question: liveText || "🧠 Loading neural duel...",
@@ -203,6 +206,10 @@ export default function DuelGame() {
                    style={{ width: `${playerHP}%` }} />
             </div>
           </div>
+        <div className="p-2 bg-black text-white rounded-xl">
+  <HealthBar label="YOU" hp={playerHP} />
+  <HealthBar label="AI" hp={aiHP} />
+</div>
 
           <div>
             <div className="text-xs">🤖 AI</div>
