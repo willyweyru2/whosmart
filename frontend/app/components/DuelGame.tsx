@@ -27,6 +27,15 @@ export default function DuelGame() {
     setPersonality(personalities[Math.floor(Math.random() * personalities.length)]);
   }, []);
 
+  useEffect(() => {
+  async function loadFirstQuestion() {
+    const q = await getGrokQuestion();
+    setQuestion(q);
+  }
+  loadFirstQuestion();
+}, []);
+
+
   // Health bars
   const [playerHP, setPlayerHP] = useState(MAX_HP);
   const [aiHP, setAiHP] = useState(MAX_HP);
@@ -71,7 +80,7 @@ export default function DuelGame() {
 
   async function getGrokQuestion(): Promise<Question> {
     try {
-      const res = await fetch("/api/grok", {
+      const res = await fetch("/api/grokQuestions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: "Generate duel question JSON" }),
