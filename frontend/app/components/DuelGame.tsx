@@ -59,13 +59,15 @@ export default function DuelGame() {
 
   // Fallback questions
   function fallbackQuestion(): Question {
-    const pool = [
-      { question: "Is intelligence more powerful than money?", a: "Yes", b: "No", correct: "a" },
-      { question: "100 duck-sized horses or 1 horse-sized duck?", a: "100 horses", b: "1 duck", correct: "a" },
-      { question: "Will AI surpass humans?", a: "Yes", b: "No", correct: "a" },
-    ];
-    return pool[Math.floor(Math.random() * pool.length)];
-  }
+  const pool: Question[] = [
+    { question: "Is intelligence more powerful than money?", a: "Yes", b: "No", correct: "a" },
+    { question: "Who wins: 100 duck-sized horses or 1 horse-sized duck?", a: "100 horses", b: "1 duck", correct: "a" },
+    { question: "Will AI surpass humans?", a: "Yes", b: "No", correct: "a" },
+  ];
+
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 
   async function getGrokQuestion(): Promise<Question> {
     try {
