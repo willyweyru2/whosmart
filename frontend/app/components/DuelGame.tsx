@@ -45,22 +45,30 @@ export default function DuelGame() {
   const [round, setRound] = useState(1);
   const [gameOver, setGameOver] = useState(false);
 
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Save HP progress
   useEffect(() => {
     saveProgress({ player: playerHP, ai: aiHP });
   }, [playerHP, aiHP]);
 
-  // Load AI questions batch when difficulty changes
+  // Load questions when difficulty changes OR restart
+  async function loadNewQuestions() {
+    await getQuestions(difficulty);
+    const first = getNextQuestion();
+    setQuestion(first);
+  }
+
   useEffect(() => {
-    async function loadQuestions() {
-      await getQuestions(difficulty);
-      const first = getNextQuestion();
-      setQuestion(first);
-    }
-    loadQuestions();
+    loadNewQuestions();
   }, [difficulty]);
+
+  // Cleanup timeout
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   // AI IQ
   function getIQ() {
@@ -98,33 +106,35 @@ export default function DuelGame() {
     const dmg = getDamage();
 
     let win = false;
-    let newPlayer = playerHP;
-    let newAI = aiHP;
 
-    if (choice === correct && ai !== correct) {
-      win = true;
-      newAI = Math.max(0, aiHP - dmg);
-      setAiHP(newAI);
-      setMsg(`YOU HIT 🤖 -${dmg}HP`);
-      fireConfetti();
-    } 
-    else if (ai === correct && choice !== correct) {
-      newPlayer = Math.max(0, playerHP - dmg);
-      setPlayerHP(newPlayer);
-      setMsg(`AI HIT YOU 👤 -${dmg}HP`);
-    } 
-    else {
-      setMsg("CLASH ⚔️ No damage");
-    }
+    setPlayerHP((p) => {
+      let newPlayer = p;
+      let newAI = aiHP;
 
-    setMsg((m) => m + " " + aiTrashTalk(win));
-    getHybridTrashTalk(newPlayer, newAI).then(setTaunt);
+      if (choice === correct && ai !== correct) {
+        win = true;
+        newAI = Math.max(0, aiHP - dmg);
+        setAiHP(newAI);
+        setMsg(`YOU HIT 🤖 -${dmg}HP`);
+        fireConfetti();
+      } 
+      else if (ai === correct && choice !== correct) {
+        newPlayer = Math.max(0, p - dmg);
+        setMsg(`AI HIT YOU 👤 -${dmg}HP`);
+      } 
+      else {
+        setMsg("CLASH ⚔️ No damage");
+      }
 
-    // Game Over
-    if (newPlayer <= 0 || newAI <= 0) {
-      setGameOver(true);
-      return;
-    }
+      setMsg((m) => m + " " + aiTrashTalk(win));
+      getHybridTrashTalk(newPlayer, newAI).then(setTaunt);
+
+      if (newPlayer <= 0 || newAI <= 0) {
+        setGameOver(true);
+      }
+
+      return newPlayer;
+    });
 
     // Next question
     timeoutRef.current = setTimeout(() => {
@@ -141,6 +151,10 @@ export default function DuelGame() {
     setAiHP(MAX_HP);
     setRound(1);
     setGameOver(false);
+    setMsg("");
+    setTaunt("");
+    setLocked(false);
+    loadNewQuestions(); // 🔥 reload AI questions
   }
 
   const q: Question = question || {
@@ -153,7 +167,6 @@ export default function DuelGame() {
   return (
     <>
       <div className="ai-card w-full max-w-[420px] mx-auto p-4 space-y-3">
-
         <h1 className="text-lg font-bold text-center">{APP_NAME} Duel</h1>
         <p className="text-xs text-purple-400 text-center">AI Mode: {personality}</p>
 

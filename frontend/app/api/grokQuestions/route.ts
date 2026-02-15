@@ -40,6 +40,7 @@ Rules:
 
     const raw = await res.json();
     const text = raw.choices?.[0]?.message?.content || "[]";
+    
 
     console.log("🧠 Grok raw:", text);
 
