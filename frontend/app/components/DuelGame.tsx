@@ -16,6 +16,8 @@ type Question = {
   correct: "a" | "b";
 };
 
+const MAX_HP = 100;
+
 export default function DuelGame() {
   // AI personality
   const personalities = ["Scientist", "Toxic", "Coach"];
@@ -25,9 +27,11 @@ export default function DuelGame() {
     setPersonality(personalities[Math.floor(Math.random() * personalities.length)]);
   }, []);
 
-  // Core state
-  const [playerScore, setPlayerScore] = useState(0);
-  const [aiScore, setAiScore] = useState(0);
+  // Health bars
+  const [playerHP, setPlayerHP] = useState(MAX_HP);
+  const [aiHP, setAiHP] = useState(MAX_HP);
+
+  // Difficulty
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard" | "god">("medium");
 
   const [msg, setMsg] = useState("");
@@ -41,155 +45,100 @@ export default function DuelGame() {
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load progress
+  // Save progress (HP)
   useEffect(() => {
-    const p = getProgress();
-    if (p) {
-      setPlayerScore(p.player || 0);
-      setAiScore(p.ai || 0);
-    }
-  }, []);
-
-  // Save progress
-  useEffect(() => {
-    saveProgress({ player: playerScore, ai: aiScore });
-  }, [playerScore, aiScore]);
+    saveProgress({ player: playerHP, ai: aiHP });
+  }, [playerHP, aiHP]);
 
   // AI IQ difficulty
   function getIQ() {
-    return difficulty === "easy"
-      ? 0.3
-      : difficulty === "medium"
-      ? 0.6
-      : difficulty === "hard"
-      ? 0.85
-      : 0.99;
+    return difficulty === "easy" ? 0.3 :
+           difficulty === "medium" ? 0.6 :
+           difficulty === "hard" ? 0.85 : 0.99;
   }
 
-  // Local fallback questions
+  // Fallback questions
   function fallbackQuestion(): Question {
     const pool = [
       { question: "Is intelligence more powerful than money?", a: "Yes", b: "No", correct: "a" },
-      { question: "Who wins: 100 duck-sized horses or 1 horse-sized duck?", a: "100 horses", b: "1 duck", correct: "a" },
+      { question: "100 duck-sized horses or 1 horse-sized duck?", a: "100 horses", b: "1 duck", correct: "a" },
       { question: "Will AI surpass humans?", a: "Yes", b: "No", correct: "a" },
     ];
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
-  // Fetch Grok question (safe)
   async function getGrokQuestion(): Promise<Question> {
     try {
       const res = await fetch("/api/grok", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: "Generate a duel question JSON" }),
+        body: JSON.stringify({ prompt: "Generate duel question JSON" }),
       });
-
       const data = await res.json();
-      if (!data?.question) throw new Error("Invalid AI response");
-
       return {
         question: data.question,
         a: data.a || "Option A",
         b: data.b || "Option B",
         correct: data.correct === "b" ? "b" : "a",
       };
-    } catch (e) {
-      console.error("AI failed, using fallback:", e);
+    } catch {
       return fallbackQuestion();
     }
   }
 
-  // Streaming (optional UI effect)
-  async function streamGrokQuestion(setLiveText: (t: string) => void) {
-    try {
-      const res = await fetch("/api/grok-stream", {
-        method: "POST",
-        body: JSON.stringify({ prompt: "Generate duel question" }),
-      });
-
-      if (!res.body) return "";
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let full = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value);
-        full += chunk;
-        setLiveText(full);
-      }
-
-      return full;
-    } catch {
-      return "";
-    }
-  }
-
-  // Load question on difficulty change
-  useEffect(() => {
-    let mounted = true;
-
-    async function load() {
-      setLiveText("🧠 AI thinking...");
-      await streamGrokQuestion(setLiveText);
-      const q = await getGrokQuestion();
-      if (mounted) {
-        setQuestion(q);
-        setRound(1);
-      }
-    }
-
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, [difficulty]);
-
-  // Fire confetti safely (NO SSR CRASH)
+  // Confetti
   async function fireConfetti() {
     if (typeof window === "undefined") return;
     const confetti = (await import("canvas-confetti")).default;
-    confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
+    confetti({ particleCount: 80, spread: 60 });
+  }
+
+  // Damage calculator
+  function getDamage() {
+    return difficulty === "easy" ? 10 :
+           difficulty === "medium" ? 15 :
+           difficulty === "hard" ? 20 : 30;
   }
 
   // Swipe handler
   async function choose(choice: "a" | "b") {
     if (!question || locked || gameOver) return;
     setLocked(true);
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
     setAiThinking(true);
-    await new Promise((r) => setTimeout(r, 600));
+    await new Promise((r) => setTimeout(r, 500));
 
     const ai = aiDecision(question, getIQ());
     setAiThinking(false);
 
     const correct = question.correct;
+    const dmg = getDamage();
+
     let win = false;
-    let newPlayer = playerScore;
-    let newAI = aiScore;
+    let newPlayer = playerHP;
+    let newAI = aiHP;
 
     if (choice === correct && ai !== correct) {
       win = true;
-      newPlayer++;
-      setPlayerScore(newPlayer);
-      setMsg("YOU WIN 🧠");
+      newAI = Math.max(0, aiHP - dmg);
+      setAiHP(newAI);
+      setMsg(`YOU HIT 🤖 -${dmg}HP`);
       fireConfetti();
-    } else if (ai === correct && choice !== correct) {
-      newAI++;
-      setAiScore(newAI);
-      setMsg("AI DOMINATES 🤖");
-    } else {
-      setMsg("DRAW ⚔️");
+    } 
+    else if (ai === correct && choice !== correct) {
+      newPlayer = Math.max(0, playerHP - dmg);
+      setPlayerHP(newPlayer);
+      setMsg(`AI HIT YOU 👤 -${dmg}HP`);
+    } 
+    else {
+      setMsg("CLASH ⚔️ No damage");
     }
 
     setMsg((m) => m + " " + aiTrashTalk(win));
     getHybridTrashTalk(newPlayer, newAI).then(setTaunt);
 
-    if (newPlayer >= 10 || newAI >= 10) {
+    // Game over
+    if (newPlayer <= 0 || newAI <= 0) {
       setGameOver(true);
       return;
     }
@@ -217,15 +166,16 @@ export default function DuelGame() {
 
   return (
     <>
-      <div className="ai-card w-full max-w-[420px] text-center space-y-4 mx-auto">
+      <div className="ai-card w-full max-w-[420px] mx-auto p-4 space-y-3">
 
-        <h1 className="text-xl font-bold">{APP_NAME} Duel Arena</h1>
-        <p className="text-xs text-purple-400">AI Personality: {personality}</p>
+        <h1 className="text-lg font-bold text-center">{APP_NAME} Duel</h1>
+        <p className="text-xs text-purple-400 text-center">AI Mode: {personality}</p>
 
+        {/* Difficulty */}
         <select
           value={difficulty}
           onChange={(e) => setDifficulty(e.target.value as any)}
-          className="bg-black border border-gray-700 rounded p-2 text-sm"
+          className="bg-black border border-gray-700 rounded p-2 text-sm w-full"
         >
           <option value="easy">Easy 😴</option>
           <option value="medium">Medium 🧠</option>
@@ -233,24 +183,39 @@ export default function DuelGame() {
           <option value="god">God Mode 👑</option>
         </select>
 
-        <div className="flex justify-between items-center text-lg font-bold">
-          <div className="bg-blue-600 px-3 py-1 rounded-full animate-pulse">👤 {playerScore}</div>
-          <div className="text-purple-400 text-sm">ROUND {round}</div>
-          <div className="bg-red-600 px-3 py-1 rounded-full animate-pulse">🤖 {aiScore}</div>
+        {/* HEALTH BARS */}
+        <div className="space-y-2">
+          <div>
+            <div className="text-xs">👤 Player</div>
+            <div className="w-full bg-gray-800 h-3 rounded">
+              <div className="bg-blue-500 h-3 rounded transition-all"
+                   style={{ width: `${playerHP}%` }} />
+            </div>
+          </div>
+
+          <div>
+            <div className="text-xs">🤖 AI</div>
+            <div className="w-full bg-gray-800 h-3 rounded">
+              <div className="bg-red-500 h-3 rounded transition-all"
+                   style={{ width: `${aiHP}%` }} />
+            </div>
+          </div>
         </div>
+
+        <p className="text-xs text-center text-purple-400">ROUND {round}</p>
 
         <SwipeCards question={q} onSwipe={choose} />
 
-        {aiThinking && <p className="italic text-gray-400">AI thinking...</p>}
-        {taunt && <p className="italic text-purple-400">{taunt}</p>}
-        {msg && <p className="text-yellow-300 font-bold">{msg}</p>}
+        {aiThinking && <p className="italic text-gray-400 text-center">AI thinking...</p>}
+        {taunt && <p className="italic text-purple-400 text-center">{taunt}</p>}
+        {msg && <p className="text-yellow-300 font-bold text-center">{msg}</p>}
 
-        <button onClick={restartGame} className="text-xs text-red-400 underline">
+        <button onClick={restartGame} className="text-xs text-red-400 underline w-full">
           Reset Neural Memory
         </button>
       </div>
 
-      <GameOverModal open={gameOver} playerScore={playerScore} aiScore={aiScore} onRestart={restartGame} />
+      <GameOverModal open={gameOver} playerScore={playerHP} aiScore={aiHP} onRestart={restartGame} />
     </>
   );
 }
