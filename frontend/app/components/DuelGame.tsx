@@ -68,6 +68,18 @@ export default function DuelGame() {
     };
   }, []);
 
+  const getAIQuestion = async () => {
+  const res = await fetch("/api/grok", {
+    method: "POST",
+    body: JSON.stringify({
+      prompt: "Generate a tricky intelligence duel question"
+    })
+  });
+
+  const data = await res.json();
+  return data.choices[0].message.content;
+};
+
   // Current question fallback
   const q =
   questions[index] || {

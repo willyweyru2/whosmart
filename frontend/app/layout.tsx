@@ -4,9 +4,9 @@ import { Inter } from "next/font/google";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export const metadata: Metadata = {
-  title: "Who Is Smarter? AI Brain Duel Arena",
-  description: "Self-cloning AI brain duel platform",
+export const metadata = {
+  title: "WhoSmart AI Duel",
+  description: "Who is smarter? You vs AI Brain Clone.",
 };
 
 export default function RootLayout({
