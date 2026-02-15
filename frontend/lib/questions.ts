@@ -1,3 +1,10 @@
+console.log("Fetching AI questions...");
+const res = await fetch("/api/grokQuestions", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ difficulty: "medium" }),
+});
+console.log("AI response:", res);
 export const questions = [
   { question: "Who invented gravity theory?", a: "Newton", b: "Tesla", correct: "a" },
   { question: "Which is faster?", a: "Light", b: "Sound", correct: "a" },

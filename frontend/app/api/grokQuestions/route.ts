@@ -1,34 +1,49 @@
-import OpenAI from "openai";
+import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   const { difficulty } = await req.json();
 
-  const client = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
-
-  const prompt = `
-Generate 5 duel questions with A and B options.
-Difficulty: ${difficulty}
-Return JSON array like:
-[{question,a,b,correct}]
-correct must be "a" or "b"
-`;
-
+  // In real implementation, call OpenAI to generate question based on difficulty
   try {
-    const res = await client.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
+    const res = await fetch("/api/grokQuestions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ difficulty }),
     });
-
-    const text = res.choices[0].message.content || "[]";
-
-    // Extract JSON safely
-    const json = JSON.parse(text.match(/\[[\s\S]*\]/)?.[0] || "[]");
-
-    return Response.json(json);
+    const data = await res.json();
+    return NextResponse.json(data);
   } catch (e) {
-    console.error("AI FAILED:", e);
-    return Response.json([], { status: 500 });
+    console.error("GrokQuestion API failed", e);
   }
+  fetch("/api/grokQuestions", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ difficulty }),
+});
+
+
+  // TEMP MOCK AI (so game always works)
+
+  const pool = [
+    {
+      question: "What is 2 + 2?",
+      a: "4",
+      b: "5",
+      correct: "a",
+    },
+    {
+      question: "Who invented the Internet?",
+      a: "Vint Cerf",
+      b: "Bill Gates",
+      correct: "a",
+    },
+    {
+      question: "Is AI smarter than humans?",
+      a: "Yes",
+      b: "Not yet",
+      correct: "b",
+    },
+  ];
+
+  return NextResponse.json(pool);
 }
