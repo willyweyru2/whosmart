@@ -121,3 +121,8 @@ html, body {
   align-items: center;
   min-height: 100vh;
 }
+
+body {
+  background: radial-gradient(circle at top, #1a0033, #000);
+  color: white;
+}
