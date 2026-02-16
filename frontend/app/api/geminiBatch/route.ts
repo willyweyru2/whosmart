@@ -4,79 +4,73 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const apiKey = process.env.GEMINI_API_KEY!;
+const genAI = new GoogleGenerativeAI(apiKey);
 
-// Server memory dedupe (best effort)
+// Soft dedupe (best effort only)
 const seen = new Set<string>();
 
-function cleanJSON(text: string) {
+function clean(text: string) {
   return text.replace(/```json|```/g, "").trim();
 }
 
 function safeParse(text: string) {
   try {
     return JSON.parse(text);
-  } catch {
-    console.error("❌ JSON parse failed, raw Gemini output:", text);
+  } catch (e) {
+    console.error("❌ JSON parse failed:", text);
     return null;
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const { difficulty = "medium", count = 20 } = await req.json();
+    const { difficulty = "medium", count = 20 } = await req.json().catch(() => ({}));
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-pro", // 🔥 MUCH better than flash for structured output
+      model: "gemini-1.5-flash", // ⚡ fast + stable
       generationConfig: {
-        temperature: 0.9,
+        temperature: 0.85,
         topP: 0.95,
-        maxOutputTokens: 4096,
+        responseMimeType: "application/json", // 🔥 FORCE JSON
+        maxOutputTokens: 2048,
       },
     });
 
-    const seed = crypto.randomUUID();
+    const seed = Math.random().toString(36).slice(2);
 
-    const systemPrompt = `
-You are BrainWho Duel AI engine.
+    const prompt = `
+Generate ${count} EXTREMELY UNIQUE binary trivia questions.
 
-Generate ${count} EXTREMELY UNIQUE binary-choice questions.
-
-Difficulty: ${difficulty}
-Style: viral, fast, fun, unpredictable.
-
-RULES:
-- Ultra short questions (max 12 words)
-- Only 2 answers
-- a and b must be short
+Rules:
+- Difficulty: ${difficulty}
+- Max 12 words per question
+- Only 2 answers: a and b
 - correct must be "a" or "b"
-- NO explanations
-- NO markdown
+- No markdown, no explanations
 - STRICT JSON ARRAY ONLY
-- NEVER repeat any question topic or wording
+- No repeated topics
 
-Output EXACT JSON:
-
+Format:
 [
- {"question":"...","a":"...","b":"...","correct":"a"}
+ { "question":"...", "a":"...", "b":"...", "correct":"a" }
 ]
 
-Seed: ${seed}
+Random seed: ${seed}
 `;
 
-    const result = await model.generateContent(systemPrompt);
+    const result = await model.generateContent(prompt);
     const raw = result.response.text();
-    const parsed = safeParse(cleanJSON(raw));
+    const parsed = safeParse(clean(raw));
 
     if (!Array.isArray(parsed)) throw new Error("Gemini returned invalid JSON");
 
-    // Normalize + dedupe
-    let cleaned = parsed
+    const cleaned = parsed
       .filter((q: any) => q?.question)
       .map((q: any) => ({
-        question: q.question.trim(),
-        a: (q.a || "A").trim(),
-        b: (q.b || "B").trim(),
+        question: String(q.question).trim(),
+        a: String(q.a || "A").trim(),
+        b: String(q.b || "B").trim(),
         correct: q.correct === "b" ? "b" : "a",
       }))
       .filter(q => {
@@ -86,16 +80,18 @@ Seed: ${seed}
         return true;
       });
 
-    console.log(`🧠 Gemini batch returned ${cleaned.length}/${count}`);
+    console.log(`🧠 Gemini returned ${cleaned.length}/${count}`);
 
     return NextResponse.json(cleaned, {
-      headers: { "Cache-Control": "no-store" },
+      headers: {
+        "Cache-Control": "no-store",
+      },
     });
 
   } catch (err) {
-    console.error("❌ Gemini API FAILED:", err);
+    console.error("❌ GEMINI FAILED:", err);
 
-    // HARD FALLBACK (never crash game)
+    // Hard fallback
     return NextResponse.json([
       { question: "Speed of light?", a: "299,792 km/s", b: "150,000 km/s", correct: "a" },
       { question: "Red Planet?", a: "Mars", b: "Venus", correct: "a" },
