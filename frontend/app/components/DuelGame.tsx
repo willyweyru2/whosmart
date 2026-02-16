@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import SwipeCards from "./SwipeCards";
 import StaticCard from "./StaticCard";
-import { getNextQuestion } from "@/lib/questionEngine";
 import type { Question } from "@/lib/questions"; // ✅ CORRECT
 import { getTrashLine } from "@/lib/trashEngine";
 import DifficultySelector from "./DifficultySelector";

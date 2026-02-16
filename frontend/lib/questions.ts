@@ -156,4 +156,21 @@ function expandQuestions(seed: Question[], perDifficulty = 100): Question[] {
   return out;
 }
 
-export const QUESTIONS: Question[] = expandQuestions(SEED_QUESTIONS);
+export type { Question, Difficulty, Category };
+export const QUESTIONS = expandQuestions(SEED_QUESTIONS);
+
+/* ================= NORMALIZATION & SHUFFLE ================= */
+
+function normalizeQuestion(raw: any): Question {
+  return {
+    id: raw.id ?? Math.random(),
+    text: raw.text ?? raw.question ?? "MISSING QUESTION",
+    answer: raw.answer ?? raw.correct ?? true,
+    category: raw.category ?? "logic",
+    difficulty: raw.difficulty ?? "medium",
+  };
+}
+
+export function normalizeQuestions(raw: any[]): Question[] {
+  return raw.map(normalizeQuestion);
+}
