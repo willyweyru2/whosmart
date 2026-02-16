@@ -14,15 +14,18 @@ let isFetching = false;
 let lastFetchTime = 0;
 
 // CONFIG
-const CACHE_TTL = 1000 * 60 * 2; // refresh every 2 min
-const LOW_WATER_MARK = 5;
-const MAX_CACHE = 50;
+const CACHE_TTL = 1000 * 60 * 1; // refresh every 1 min (faster)
+const LOW_WATER_MARK = 3;
+const MAX_CACHE = 40;
 
 // ================= UTILS =================
 
-// Shuffle without mutation
+// Strong shuffle
 function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
+  return arr
+    .map(v => ({ v, r: Math.random() }))
+    .sort((a, b) => a.r - b.r)
+    .map(x => x.v);
 }
 
 // Deduplicate by question text
@@ -36,6 +39,11 @@ function dedupeQuestions(list: Question[]) {
   });
 }
 
+// ================= FORCE RESET ON PAGE LOAD =================
+if (typeof window !== "undefined") {
+  (window as any).__BWQ_RESET__ = true;
+}
+
 // ================= GEMINI FETCH =================
 async function fetchGeminiBatch() {
   if (isFetching) return;
@@ -44,14 +52,11 @@ async function fetchGeminiBatch() {
   try {
     console.log("🧠 Fetching Gemini questions...");
 
-    const res = await fetch("/api/geminiBatch", {
+    const res = await fetch(`/api/geminiBatch?ts=${Date.now()}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        count: 20,
-        difficulty: "medium",
-      }),
-      cache: "no-store", // 🔥 FORCE NO CACHE
+      body: JSON.stringify({ count: 15 }),
+      cache: "no-store",
     });
 
     if (!res.ok) throw new Error(`Gemini API failed ${res.status}`);
@@ -69,7 +74,7 @@ async function fetchGeminiBatch() {
     const merged = dedupeQuestions([...questionCache, ...cleaned]);
     questionCache = shuffle(merged).slice(0, MAX_CACHE);
 
-    if (cacheIndex >= questionCache.length) cacheIndex = 0;
+    cacheIndex = 0;
 
     console.log("✅ BrainWho cache size:", questionCache.length);
   } catch (err) {
@@ -84,6 +89,13 @@ async function fetchGeminiBatch() {
 
 // Preload
 export async function getQuestions(): Promise<Question[]> {
+  // Force reset on reload
+  if ((window as any).__BWQ_RESET__) {
+    questionCache = [];
+    cacheIndex = 0;
+    (window as any).__BWQ_RESET__ = false;
+  }
+
   if (!questionCache.length) {
     await fetchGeminiBatch();
   }
@@ -104,9 +116,7 @@ export async function getNextQuestion(): Promise<Question | null> {
   }
 
   const q = questionCache[cacheIndex];
-  cacheIndex++;
-
-  if (cacheIndex >= questionCache.length) cacheIndex = 0;
+  cacheIndex = (cacheIndex + 1) % questionCache.length;
 
   // Auto refill
   if (questionCache.length - cacheIndex < LOW_WATER_MARK) {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import SwipeCards from "./SwipeCards";
 import { getNextQuestion, Question } from "@/lib/questionEngine";
+import { getTrashLine } from "@/lib/trashEngine"; // ✅ NEW
 
 export default function DuelGame() {
   const [current, setCurrent] = useState<Question | null>(null);
@@ -13,22 +14,22 @@ export default function DuelGame() {
   const [trashTalk, setTrashTalk] = useState("Booting neural duel...");
   const [flash, setFlash] = useState(false);
 
-  const TRASH_LINES = {
-    start: ["Human brain detected.", "Simulating your defeat.", "Neural duel initiated."],
-    correct: ["Unexpected neuron spike.", "Adaptive response detected."],
-    wrong: ["Predicted failure.", "AI dominance confirmed."],
-    streak: ["Impossible probability.", "Human brain mutation detected."],
-  };
+  // ================= AI TRASH TALK (INSTANT CACHE) =================
 
-  const randomLine = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+  async function updateTrash() {
+    const line = await getTrashLine();
+    setTrashTalk(line);
+  }
 
   // ================= LOAD FIRST QUESTION =================
 
   async function loadFirst() {
     setLoading(true);
+
     const q = await getNextQuestion();
     setCurrent(q);
-    setTrashTalk(randomLine(TRASH_LINES.start));
+
+    await updateTrash(); // preload trash
     setLoading(false);
   }
 
@@ -52,34 +53,33 @@ export default function DuelGame() {
     const correct = choice === current.correct;
 
     if (correct) {
-      setScore(s => s + 1);
-      setStreak(s => {
-        const ns = s + 1;
-        setTrashTalk(ns >= 3 ? randomLine(TRASH_LINES.streak) : randomLine(TRASH_LINES.correct));
-        return ns;
-      });
+      setScore((s) => s + 1);
+      setStreak((s) => s + 1);
+      updateTrash(); // 🔥 instant
+
       vibrate(20);
       setFlash(true);
       setTimeout(() => setFlash(false), 150);
     } else {
-      setAiScore(s => s + 1);
+      setAiScore((s) => s + 1);
       setStreak(0);
-      setTrashTalk(randomLine(TRASH_LINES.wrong));
+      updateTrash(); // 🔥 instant
+
       vibrate([20, 40, 20]);
     }
 
-    // 🔥 Load next AI question instantly (BrainWho loop)
+    // BrainWho infinite AI question loop
     const next = await getNextQuestion();
     setCurrent(next);
   }
 
   // ================= RESET =================
 
-  function restartGame() {
+  async function restartGame() {
     setScore(0);
     setAiScore(0);
     setStreak(0);
-    loadFirst();
+    await loadFirst();
   }
 
   // ================= LOADING UI =================
@@ -151,7 +151,7 @@ export default function DuelGame() {
         <SwipeCards question={current} onSwipe={handleSwipe} />
       </div>
 
-      {/* RESET BUTTON (DEBUG) */}
+      {/* RESET BUTTON */}
       <button
         onClick={restartGame}
         className="absolute bottom-2 right-2 text-[10px] text-purple-500 opacity-50"
