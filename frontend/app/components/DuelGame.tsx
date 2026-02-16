@@ -1,15 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { aiDecision } from "../../lib/aiDecision";
-import { getHybridTrashTalk } from "../../lib/hybridTrashTalk";
-import { aiTrashTalk } from "../../lib/trashTalk";
-import { saveProgress } from "../../lib/progress";
-import { APP_NAME } from "../../lib/config";
-import GameOverModal from "./GameOverModal";
+import { useEffect, useState } from "react";
 import SwipeCards from "./SwipeCards";
-import HealthBar from "./HealthBar";
-import { getQuestions, getNextQuestion } from "../../lib/questionEngine";
 
 type Question = {
   question: string;
@@ -18,195 +10,196 @@ type Question = {
   correct: "a" | "b";
 };
 
-const MAX_HP = 100;
-
 export default function DuelGame() {
-  // AI personality
-  const personalities = ["Scientist", "Toxic", "Coach"];
-  const [personality, setPersonality] = useState("Scientist");
-
-  useEffect(() => {
-    setPersonality(personalities[Math.floor(Math.random() * personalities.length)]);
-  }, []);
-
-  // Health
-  const [playerHP, setPlayerHP] = useState(MAX_HP);
-  const [aiHP, setAiHP] = useState(MAX_HP);
-
-  // Difficulty
-  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard" | "god">("medium");
-
-  // Game state
-  const [question, setQuestion] = useState<Question | null>(null);
-  const [msg, setMsg] = useState("");
-  const [taunt, setTaunt] = useState("");
-  const [locked, setLocked] = useState(false);
-  const [aiThinking, setAiThinking] = useState(false);
-  const [round, setRound] = useState(1);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [roundQuestions, setRoundQuestions] = useState<Question[]>([]);
+  const [index, setIndex] = useState(0);
+  const [score, setScore] = useState(0);
+  const [aiScore, setAiScore] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [gameOver, setGameOver] = useState(false);
 
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // AI Trash Talk + dopamine FX
+  const [trashTalk, setTrashTalk] = useState("Booting neural duel...");
+  const [streak, setStreak] = useState(0);
+  const [flash, setFlash] = useState(false);
 
-  // Save HP progress
-  useEffect(() => {
-    saveProgress({ player: playerHP, ai: aiHP });
-  }, [playerHP, aiHP]);
+  const TRASH_LINES = {
+    start: ["Human brain detected.", "Simulating your defeat.", "Neural duel initiated."],
+    correct: ["Interesting.", "Unexpected neuron spike.", "Adaptive response detected."],
+    wrong: ["Predicted failure.", "Human latency error.", "AI dominance confirmed."],
+    streak: ["Impossible probability.", "Human brain mutation detected.", "You are evolving."],
+  };
 
-  // Load questions when difficulty changes OR restart
-  async function loadNewQuestions() {
-    await getQuestions(difficulty);
-    const first = getNextQuestion();
-    setQuestion(first);
+  const randomLine = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+
+  async function loadQuestions() {
+    setLoading(true);
+    setGameOver(false);
+
+    try {
+      const res = await fetch("/api/geminiQuestions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ difficulty: "medium" }),
+      });
+
+      const data = await res.json();
+      if (!Array.isArray(data) || data.length === 0) throw new Error("Invalid AI data");
+
+      setQuestions(data);
+      startNewRound(data);
+    } catch {
+      const fallback: Question[] = [
+        { question: "Which planet has rings?", a: "Saturn", b: "Mars", correct: "a" },
+        { question: "2 + 2 = ?", a: "4", b: "5", correct: "a" },
+        { question: "Capital of France?", a: "Paris", b: "London", correct: "a" },
+        { question: "Largest ocean?", a: "Pacific", b: "Atlantic", correct: "a" },
+        { question: "Fastest land animal?", a: "Cheetah", b: "Lion", correct: "a" },
+      ];
+      setQuestions(fallback);
+      startNewRound(fallback);
+    }
+
+    setLoading(false);
   }
 
-  useEffect(() => {
-    loadNewQuestions();
-  }, [difficulty]);
-
-  // Cleanup timeout
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, []);
-
-  // AI IQ
-  function getIQ() {
-    return difficulty === "easy" ? 0.3 :
-           difficulty === "medium" ? 0.6 :
-           difficulty === "hard" ? 0.85 : 0.99;
+  function startNewRound(all: Question[]) {
+    const shuffled = [...all].sort(() => Math.random() - 0.5);
+    setRoundQuestions(shuffled.slice(0, 5));
+    setIndex(0);
+    setScore(0);
+    setAiScore(0);
+    setStreak(0);
+    setTrashTalk(randomLine(TRASH_LINES.start));
   }
 
-  // Damage scaling
-  function getDamage() {
-    return difficulty === "easy" ? 10 :
-           difficulty === "medium" ? 15 :
-           difficulty === "hard" ? 20 : 30;
+  function vibrate(ms: number) {
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      navigator.vibrate(ms);
+    }
   }
 
-  // Confetti
-  async function fireConfetti() {
-    if (typeof window === "undefined") return;
-    const confetti = (await import("canvas-confetti")).default;
-    confetti({ particleCount: 80, spread: 60 });
-  }
+  function handleSwipe(choice: "a" | "b") {
+    const current = roundQuestions[index];
+    if (!current) return;
 
-  // Swipe handler
-  async function choose(choice: "a" | "b") {
-    if (!question || locked || gameOver) return;
-    setLocked(true);
-    setAiThinking(true);
+    const correct = choice === current.correct;
 
-    await new Promise((r) => setTimeout(r, 500));
+    if (correct) {
+      setScore((s) => s + 1);
+      setStreak((s) => s + 1);
+      setTrashTalk(streak >= 2 ? randomLine(TRASH_LINES.streak) : randomLine(TRASH_LINES.correct));
+      setFlash(true);
+      vibrate(30);
+      setTimeout(() => setFlash(false), 250);
+    } else {
+      setAiScore((s) => s + 1);
+      setStreak(0);
+      setTrashTalk(randomLine(TRASH_LINES.wrong));
+      vibrate([20, 30, 20]);
+    }
 
-    const ai = aiDecision(question, getIQ());
-    setAiThinking(false);
-
-    const correct = question.correct;
-    const dmg = getDamage();
-
-    let win = false;
-
-    setPlayerHP((p) => {
-      let newPlayer = p;
-      let newAI = aiHP;
-
-      if (choice === correct && ai !== correct) {
-        win = true;
-        newAI = Math.max(0, aiHP - dmg);
-        setAiHP(newAI);
-        setMsg(`YOU HIT 🤖 -${dmg}HP`);
-        fireConfetti();
-      } 
-      else if (ai === correct && choice !== correct) {
-        newPlayer = Math.max(0, p - dmg);
-        setMsg(`AI HIT YOU 👤 -${dmg}HP`);
-      } 
-      else {
-        setMsg("CLASH ⚔️ No damage");
-      }
-
-      setMsg((m) => m + " " + aiTrashTalk(win));
-      getHybridTrashTalk(newPlayer, newAI).then(setTaunt);
-
-      if (newPlayer <= 0 || newAI <= 0) {
-        setGameOver(true);
-      }
-
-      return newPlayer;
-    });
-
-    // Next question
-    timeoutRef.current = setTimeout(() => {
-      const next = getNextQuestion();
-      setQuestion(next);
-      setRound((r) => r + 1);
-      setMsg("");
-      setLocked(false);
-    }, 1200);
+    if (index === roundQuestions.length - 1) setGameOver(true);
+    else setIndex((i) => i + 1);
   }
 
   function restartGame() {
-    setPlayerHP(MAX_HP);
-    setAiHP(MAX_HP);
-    setRound(1);
+    startNewRound(questions);
     setGameOver(false);
-    setMsg("");
-    setTaunt("");
-    setLocked(false);
-    loadNewQuestions(); // 🔥 reload AI questions
   }
 
-  const q: Question = question || {
-    question: "🧠 Loading neural duel...",
-    a: "...",
-    b: "...",
-    correct: "a",
-  };
+  useEffect(() => {
+    loadQuestions();
+  }, []);
 
-  return (
-    <>
-      <div className="ai-card w-full max-w-[420px] mx-auto p-4 space-y-3">
-        <h1 className="text-lg font-bold text-center">{APP_NAME} Duel</h1>
-        <p className="text-xs text-purple-400 text-center">AI Mode: {personality}</p>
+  // LOADING
+  if (loading || !roundQuestions[index]) {
+    return (
+      <div className="h-full flex items-center justify-center text-purple-400 text-sm animate-pulse">
+        🧠 Training Neural Clone...
+      </div>
+    );
+  }
 
-        {/* Difficulty */}
-        <select
-          value={difficulty}
-          onChange={(e) => setDifficulty(e.target.value as any)}
-          className="bg-black border border-gray-700 rounded p-2 text-sm w-full"
+  // GAME OVER
+  if (gameOver) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center text-center gap-4 bg-black/80 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30">
+        <h2 className="text-2xl font-bold text-purple-300">Neural Battle Complete</h2>
+        <p className="text-lg">You: {score} — AI: {aiScore}</p>
+
+        <button
+          onClick={restartGame}
+          className="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-500 font-bold shadow-lg active:scale-95 transition"
         >
-          <option value="easy">Easy 😴</option>
-          <option value="medium">Medium 🧠</option>
-          <option value="hard">Hard 🤖</option>
-          <option value="god">God Mode 👑</option>
-        </select>
-
-        {/* HEALTH BARS */}
-        <div className="p-2 bg-black text-white rounded-xl space-y-2">
-          <HealthBar label="YOU" hp={playerHP} />
-          <HealthBar label="AI" hp={aiHP} />
-        </div>
-
-        <p className="text-xs text-center text-purple-400">ROUND {round}</p>
-
-        <SwipeCards question={q} onSwipe={choose} />
-
-        {aiThinking && <p className="italic text-gray-400 text-center">AI thinking...</p>}
-        {taunt && <p className="italic text-purple-400 text-center">{taunt}</p>}
-        {msg && <p className="text-yellow-300 font-bold text-center">{msg}</p>}
-
-        <button onClick={restartGame} className="text-xs text-red-400 underline w-full">
-          Reset Neural Memory
+          Rematch AI
         </button>
       </div>
+    );
+  }
 
-      <GameOverModal 
-        open={gameOver} 
-        playerScore={playerHP} 
-        aiScore={aiHP} 
-        onRestart={restartGame} 
-      />
-    </>
+  // Brain battle %
+  const total = score + aiScore || 1;
+  const humanPct = (score / total) * 100;
+
+  return (
+    <div className={`relative h-full w-full overflow-hidden ${flash ? "streak-flash" : ""}`}>
+
+      {/* BACKGROUND */}
+      <div className="absolute inset-0 bg-gradient-to-b from-purple-900/40 via-black to-black" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(139,92,246,0.25),transparent_65%)]" />
+
+      {/* HEADER LOGO (THIS WAS MISSING) */}
+      <div className="absolute top-2 left-0 right-0 flex justify-center z-40">
+        <h1 className="text-lg font-extrabold tracking-tight text-purple-300 drop-shadow-[0_0_12px_rgba(139,92,246,0.8)]">
+          Who’s Smarter
+        </h1>
+      </div>
+
+      {/* HUD */}
+      <div className="absolute top-9 left-0 right-0 flex justify-between px-4 text-[11px] text-purple-300 z-30">
+        <div className="hud-panel">Q {index + 1}/5</div>
+        <div className="hud-panel">Score {score}</div>
+      </div>
+
+      {/* BRAIN POWER BAR */}
+      <div className="absolute top-16 left-4 right-4 z-30">
+        <div className="h-2 rounded-full bg-neutral-800 overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 transition-all duration-300"
+            style={{ width: `${humanPct}%` }}
+          />
+        </div>
+        <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+          <span>You</span>
+          <span>AI</span>
+        </div>
+      </div>
+
+      {/* AI AVATAR */}
+      <div className="absolute left-2 bottom-[28%] z-40 flex flex-col items-center gap-2">
+        <div className="ai-avatar w-14 h-14 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 flex items-center justify-center text-xl font-black shadow-[0_0_20px_rgba(0,255,255,0.4)]">
+          AI
+        </div>
+
+        <div className="bg-black/70 border border-purple-500/30 backdrop-blur-xl px-3 py-2 rounded-xl text-xs max-w-[160px] shadow-xl">
+          {trashTalk}
+        </div>
+      </div>
+
+      {/* STREAK HUD */}
+      {streak >= 2 && (
+        <div className="absolute right-4 top-[35%] text-xs font-bold text-yellow-400 animate-pulse z-50">
+          🔥 {streak} STREAK
+        </div>
+      )}
+
+      {/* SWIPE ZONE */}
+      <div className="relative h-full flex items-center justify-center pt-16 pb-8 px-2">
+        <SwipeCards question={roundQuestions[index]} onSwipe={handleSwipe} />
+      </div>
+
+    </div>
   );
 }

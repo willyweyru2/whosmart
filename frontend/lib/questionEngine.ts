@@ -9,85 +9,103 @@ type Question = {
 
 let questionCache: Question[] = [];
 let cacheIndex = 0;
+let isFetching = false;
 let lastFetchTime = 0;
 
-const CACHE_TTL = 1000 * 30; // 30 seconds (faster refresh while dev)
+const CACHE_TTL = 1000 * 60 * 2;
+const LOW_WATER_MARK = 5;
+const MAX_CACHE = 50;
 
-// Fisher-Yates shuffle (better than Math.random sort)
-function shuffle(array: any[]) {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
-  return array;
+// IMPORTANT: Do NOT mutate original array
+function shuffle<T>(arr: T[]) {
+  return [...arr].sort(() => Math.random() - 0.5);
 }
 
-export async function getQuestions(difficulty = "medium") {
-  const now = Date.now();
+function dedupeQuestions(list: Question[]) {
+  const seen = new Set<string>();
+  return list.filter(q => {
+    const key = q.question.toLowerCase().trim();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+async function fetchGeminiBatch() {
+  if (isFetching) return;
+  isFetching = true;
 
   try {
-    // Force refresh if empty OR expired
-    if (!questionCache.length || now - lastFetchTime > CACHE_TTL) {
-      console.log("🧠 Fetching NEW Gemini questions...");
+    console.log("🧠 Fetching Gemini questions...");
 
-      const res = await fetch("/api/geminiQuestions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ difficulty, seed: Date.now() }), // seed forces randomness
-        cache: "no-store",
-      });
+    const res = await fetch("/api/geminiBatch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ count: 20, difficulty: "medium" }),
+      cache: "no-store",
+    });
 
-      if (!res.ok) throw new Error("Gemini API failed");
+    if (!res.ok) throw new Error("Gemini API failed");
 
-      const data = await res.json();
-      if (!Array.isArray(data) || data.length === 0) throw new Error("Bad Gemini data");
+    const data = await res.json();
+    if (!Array.isArray(data)) throw new Error("Invalid Gemini format");
 
-      questionCache = data.map((q: any) => ({
-        question: q.question || "AI glitch question 🤖",
-        a: q.a || "Option A",
-        b: q.b || "Option B",
-        correct: q.correct === "b" ? "b" : "a",
-      }));
+    const cleaned: Question[] = data.map((q: any) => ({
+      question: q.question || "AI glitch 🤖",
+      a: q.a || "Option A",
+      b: q.b || "Option B",
+      correct: q.correct === "b" ? "b" : "a",
+    }));
 
-      shuffle(questionCache);
+    const merged = dedupeQuestions([...questionCache, ...cleaned]);
+    questionCache = shuffle(merged).slice(0, MAX_CACHE);
 
+    // ✅ Reset index if cache shrank or overflowed
+    if (cacheIndex >= questionCache.length) {
       cacheIndex = 0;
-      lastFetchTime = now;
     }
 
-    return questionCache;
+    console.log(`✅ Cache size: ${questionCache.length}`);
   } catch (err) {
-    console.warn("⚠️ Gemini failed, using fallback", err);
-
-    // Fallback pool (bigger so it doesn’t feel repetitive)
-    const fallback: Question[] = [
-      { question: "What is the speed of light?", a: "299,792 km/s", b: "150,000 km/s", correct: "a" },
-      { question: "Who created the World Wide Web?", a: "Tim Berners-Lee", b: "Elon Musk", correct: "a" },
-      { question: "What planet is known as the Red Planet?", a: "Mars", b: "Venus", correct: "a" },
-      { question: "What is the largest ocean?", a: "Pacific", b: "Indian", correct: "a" },
-      { question: "What is H2O?", a: "Water", b: "Oxygen", correct: "a" },
-      { question: "Who wrote Hamlet?", a: "Shakespeare", b: "Einstein", correct: "a" },
-    ];
-
-    questionCache = shuffle(fallback);
-    cacheIndex = 0;
-    lastFetchTime = now;
-
-    return questionCache;
+    console.error("❌ Gemini fetch failed:", err);
+  } finally {
+    isFetching = false;
+    lastFetchTime = Date.now();
   }
 }
 
-// Serve ONE question sequentially
-export function getNextQuestion(): Question | null {
-  if (!questionCache.length) return null;
+// Preload questions
+export async function getQuestions() {
+  if (questionCache.length === 0) {
+    await fetchGeminiBatch();
+  }
+
+  if (Date.now() - lastFetchTime > CACHE_TTL) {
+    // fire & forget refresh (safe)
+    fetchGeminiBatch();
+  }
+
+  return questionCache;
+}
+
+// Main game function
+export async function getNextQuestion(): Promise<Question | null> {
+  if (questionCache.length === 0) {
+    await fetchGeminiBatch();
+    if (!questionCache.length) return null;
+  }
 
   const q = questionCache[cacheIndex];
+
   cacheIndex++;
 
-  // Loop but reshuffle each round
   if (cacheIndex >= questionCache.length) {
     cacheIndex = 0;
-    shuffle(questionCache);
+  }
+
+  // Preload more in background safely
+  if (questionCache.length - cacheIndex < LOW_WATER_MARK) {
+    fetchGeminiBatch();
   }
 
   return q;

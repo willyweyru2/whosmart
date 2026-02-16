@@ -3,71 +3,164 @@
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { useEffect, useState } from "react";
 
-type Props = {
-  question: {
-    question: string;
-    a: string;
-    b: string;
-  };
-  onSwipe: (choice: "a" | "b") => void;
+type Question = {
+  question: string;
+  a: string;
+  b: string;
 };
 
-export default function SwipeCards({ question, onSwipe }: Props) {
+export default function SwipeCards({
+  question,
+  onSwipe,
+}: {
+  question: Question;
+  onSwipe: (choice: "a" | "b") => void;
+}) {
   const x = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 200], [-12, 12]);
-  const opacity = useTransform(x, [-200, 0, 200], [0.4, 1, 0.4]);
+  const rotate = useTransform(x, [-300, 300], [-22, 22]);
+  const opacity = useTransform(x, [-300, 0, 300], [0.2, 1, 0.2]);
 
-  const [locked, setLocked] = useState(false);
+  const rightGlow = useTransform(x, [0, 160], [0, 1]);
+  const leftGlow = useTransform(x, [-160, 0], [1, 0]);
 
-  // 🔥 Reset card when question changes
+  const rightLabel = useTransform(x, [60, 180], [0, 1]);
+  const leftLabel = useTransform(x, [-180, -60], [1, 0]);
+
+  const SWIPE_THRESHOLD = 140;
+
+  // AI prediction resets per question
+  const [aiGuess, setAiGuess] = useState<"a" | "b">("a");
+
+  // 🔥 RESET CARD POSITION WHEN QUESTION CHANGES
   useEffect(() => {
-    setLocked(false);
-    animate(x, 0); // reset swipe position
-  }, [question.question]);
+    x.set(0);
+    setAiGuess(Math.random() > 0.5 ? "a" : "b");
+  }, [question.question]); // critical
 
-  function handleDragEnd(_: any, info: any) {
-    if (locked) return;
-
-    if (info.offset.x > 120) {
-      setLocked(true);
-      onSwipe("a");
-    } else if (info.offset.x < -120) {
-      setLocked(true);
-      onSwipe("b");
-    } else {
-      animate(x, 0); // snap back
+  function vibrate(ms: number | number[]) {
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      navigator.vibrate(ms);
     }
   }
 
+  function handleDragEnd(_: any, info: any) {
+    const offset = info.offset.x;
+    const velocity = info.velocity.x;
+
+    // THROW RIGHT
+    if (offset > SWIPE_THRESHOLD || velocity > 900) {
+      vibrate(30);
+      animate(x, 700, { duration: 0.25, ease: "easeOut" });
+      setTimeout(() => onSwipe("a"), 180);
+      return;
+    }
+
+    // THROW LEFT
+    if (offset < -SWIPE_THRESHOLD || velocity < -900) {
+      vibrate([20, 30, 20]);
+      animate(x, -700, { duration: 0.25, ease: "easeOut" });
+      setTimeout(() => onSwipe("b"), 180);
+      return;
+    }
+
+    // SNAP BACK
+    animate(x, 0, { type: "spring", stiffness: 520, damping: 26 });
+  }
+
   return (
-    <div className="relative w-full h-[180px] flex items-center justify-center select-none">
+    <div className="relative h-full w-full flex items-center justify-center">
+
+      {/* BACK STACK CARDS */}
+      <div className="absolute w-[96%] h-[78%] bg-purple-900/25 rounded-3xl blur-sm scale-[0.97]" />
+      <div className="absolute w-[92%] h-[76%] bg-purple-900/10 rounded-3xl blur-sm scale-[0.94]" />
+
+      {/* SWIPE GLOWS */}
       <motion.div
+        style={{ opacity: rightGlow }}
+        className="absolute right-0 inset-y-0 w-1/2 bg-gradient-to-l from-blue-600/40 to-transparent rounded-3xl pointer-events-none"
+      />
+      <motion.div
+        style={{ opacity: leftGlow }}
+        className="absolute left-0 inset-y-0 w-1/2 bg-gradient-to-r from-red-600/40 to-transparent rounded-3xl pointer-events-none"
+      />
+
+      {/* MAIN CARD */}
+      <motion.div
+        key={question.question} // 🔥 FORCE REMOUNT PER QUESTION
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
-        onDragEnd={handleDragEnd}
+        dragElastic={0.18}
         style={{ x, rotate, opacity }}
-        className="bg-black/70 border border-white/20 rounded-2xl p-5 w-full text-center shadow-xl backdrop-blur-xl"
+        onDragEnd={handleDragEnd}
+        whileDrag={{ scale: 1.06 }}
+        transition={{ type: "spring", stiffness: 500, damping: 28 }}
+        className="
+          bg-gradient-to-br from-[#0b0016] via-black to-[#120024]
+          border border-purple-500/40
+          text-white rounded-3xl p-6
+          w-full max-w-[380px] h-[78%]
+          shadow-[0_0_120px_rgba(139,92,246,0.35)]
+          text-center select-none flex flex-col justify-center
+          backdrop-blur-2xl relative
+          will-change-transform
+        "
       >
-        <p className="text-lg font-bold text-white">{question.question}</p>
+        {/* SWIPE LABELS */}
+        <motion.div
+          style={{ opacity: rightLabel }}
+          className="absolute top-6 left-6 text-blue-400 font-black text-lg tracking-widest"
+        >
+          RIGHT
+        </motion.div>
 
-        <div className="flex gap-3 mt-4">
-          <button
-            onClick={() => onSwipe("a")}
-            className="bg-blue-600 px-4 py-2 rounded-lg w-full active:scale-95 transition"
-          >
-            {question.a}
-          </button>
+        <motion.div
+          style={{ opacity: leftLabel }}
+          className="absolute top-6 right-6 text-red-400 font-black text-lg tracking-widest"
+        >
+          LEFT
+        </motion.div>
 
-          <button
-            onClick={() => onSwipe("b")}
-            className="bg-red-600 px-4 py-2 rounded-lg w-full active:scale-95 transition"
-          >
-            {question.b}
-          </button>
+        {/* AI PREDICTION */}
+        <div className="absolute top-3 right-3 text-[10px] text-purple-400 bg-black/60 px-2 py-1 rounded-full border border-purple-500/30 backdrop-blur-lg">
+          🤖 AI predicts: {aiGuess === "a" ? "Right" : "Left"}
         </div>
 
-        <p className="text-xs text-gray-400 mt-2">Swipe ➡️ for A | ⬅️ for B</p>
+        {/* QUESTION */}
+        <h2 className="text-xl font-bold mb-10 leading-snug drop-shadow">
+          {question.question}
+        </h2>
+
+        {/* ANSWERS */}
+        <div className="bg-blue-600/90 rounded-xl py-4 mb-4 text-sm font-semibold shadow-xl">
+          👉 Swipe Right — {question.a}
+        </div>
+
+        <div className="bg-red-600/90 rounded-xl py-4 text-sm font-semibold shadow-xl">
+          👈 Swipe Left — {question.b}
+        </div>
       </motion.div>
+
+      {/* FLOATING TIKTOK BUTTONS */}
+      <div className="absolute right-3 bottom-1/3 flex flex-col gap-4 z-40">
+        <button
+          onClick={() => onSwipe("b")}
+          className="w-14 h-14 rounded-full bg-red-600/90 backdrop-blur-xl border border-white/20 text-white text-xl font-bold flex items-center justify-center shadow-[0_0_20px_rgba(255,0,0,0.4)] active:scale-90 transition"
+        >
+          ❌
+        </button>
+
+        <button
+          onClick={() => onSwipe("a")}
+          className="w-14 h-14 rounded-full bg-blue-600/90 backdrop-blur-xl border border-white/20 text-white text-xl font-bold flex items-center justify-center shadow-[0_0_20px_rgba(0,200,255,0.5)] active:scale-90 transition"
+        >
+          ✅
+        </button>
+      </div>
+
+      {/* SWIPE HINT */}
+      <p className="absolute bottom-3 text-[10px] text-purple-400/60">
+        Swipe fast to throw the card
+      </p>
     </div>
   );
 }

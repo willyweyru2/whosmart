@@ -13,6 +13,7 @@ html, body {
   color: #e5e7eb;
   min-height: 100%;
   overscroll-behavior: none;
+  touch-action: pan-y;
 }
 
 /* ============================= */
@@ -37,6 +38,7 @@ html, body {
   padding: 16px;
   backdrop-filter: blur(14px);
   box-shadow: 0 0 40px rgba(140,0,255,0.12);
+  animation: neonPulse 4s infinite;
 }
 
 /* ============================= */
@@ -114,12 +116,159 @@ html, body {
 .text-muted {
   color: #9ca3af;
 }
+
+/* ============================= */
+/* NEON PULSE ANIMATION */
+/* ============================= */
+
 @keyframes neonPulse {
   0% { box-shadow: 0 0 20px rgba(140,0,255,0.1); }
-  50% { box-shadow: 0 0 40px rgba(140,0,255,0.3); }
+  50% { box-shadow: 0 0 60px rgba(140,0,255,0.35); }
   100% { box-shadow: 0 0 20px rgba(140,0,255,0.1); }
 }
 
-.ai-card {
-  animation: neonPulse 4s infinite;
+/* ============================= */
+/* SWIPE FEEDBACK GLOWS */
+/* ============================= */
+
+.swipe-yes {
+  box-shadow: 0 0 80px rgba(0,180,255,0.6);
+  border-color: rgba(0,180,255,0.6);
+}
+
+.swipe-no {
+  box-shadow: 0 0 80px rgba(255,0,80,0.6);
+  border-color: rgba(255,0,80,0.6);
+}
+
+/* ============================= */
+/* GLASS SCREEN REFLECTION (PREMIUM APP FEEL) */
+/* ============================= */
+
+.screen-glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    rgba(255,255,255,0.05),
+    transparent 40%,
+    transparent 60%,
+    rgba(255,255,255,0.03)
+  );
+  pointer-events: none;
+}
+
+/* ============================= */
+/* TIKTOK BUTTON FLOAT EFFECT */
+/* ============================= */
+
+.floating-btn {
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.4);
+  transition: 0.2s ease;
+}
+
+.floating-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 25px rgba(140,0,255,0.4);
+}
+/* ============================= */
+/* VIRAL MOBILE GAME FONT STACK */
+/* ============================= */
+
+body {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ============================= */
+/* WHO'S SMARTER NEON BRAND GRADIENT */
+/* ============================= */
+
+.brand-gradient {
+  background: linear-gradient(135deg, #7c3aed, #06b6d4);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ============================= */
+/* APP BACKGROUND ANIMATED GLOW */
+/* ============================= */
+
+.app-glow-bg {
+  background:
+    radial-gradient(circle at 20% 30%, rgba(139,92,246,0.18), transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(34,211,238,0.12), transparent 40%);
+}
+
+/* ============================= */
+/* AI HUD PANEL (FLOATING SCORE BAR) */
+/* ============================= */
+
+.hud-panel {
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(12px);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ============================= */
+/* VIRAL SWIPE CARD SHINE */
+/* ============================= */
+
+.card-shine::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 30%,
+    rgba(255,255,255,0.08),
+    transparent 70%
+  );
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* ============================= */
+/* AI AVATAR GLOW PULSE */
+/* ============================= */
+
+@keyframes aiPulse {
+  0% { box-shadow: 0 0 10px rgba(139,92,246,0.4); }
+  50% { box-shadow: 0 0 30px rgba(139,92,246,0.8); }
+  100% { box-shadow: 0 0 10px rgba(139,92,246,0.4); }
+}
+
+.ai-avatar {
+  animation: aiPulse 2.5s infinite;
+}
+
+/* ============================= */
+/* PREMIUM BUTTON MICRO MOTION */
+/* ============================= */
+
+.btn-pop:active {
+  transform: scale(0.95);
+}
+
+/* ============================= */
+/* CONFETTI / STREAK FLASH */
+/* ============================= */
+
+@keyframes streakFlash {
+  0% { background: rgba(255,255,255,0); }
+  50% { background: rgba(139,92,246,0.12); }
+  100% { background: rgba(255,255,255,0); }
+}
+
+.streak-flash {
+  animation: streakFlash 0.4s ease;
 }
