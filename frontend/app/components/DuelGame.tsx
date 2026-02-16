@@ -2,11 +2,17 @@
 
 import { useEffect, useState } from "react";
 import SwipeCards from "./SwipeCards";
-import { getNextQuestion, Question } from "@/lib/questionEngine";
-import { getTrashLine } from "@/lib/trashEngine"; // ✅ NEW
+import StaticCard from "./StaticCard";
+import { getNextQuestion } from "@/lib/questionEngine";
+import type { Question } from "@/lib/questionEngine"; // ✅ SINGLE SOURCE OF TRUTH
+
+import { getTrashLine } from "@/lib/trashEngine";
+import DifficultySelector from "./DifficultySelector";
 
 export default function DuelGame() {
   const [current, setCurrent] = useState<Question | null>(null);
+  const [nextQ, setNextQ] = useState<Question | null>(null);
+
   const [score, setScore] = useState(0);
   const [aiScore, setAiScore] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -14,22 +20,23 @@ export default function DuelGame() {
   const [trashTalk, setTrashTalk] = useState("Booting neural duel...");
   const [flash, setFlash] = useState(false);
 
-  // ================= AI TRASH TALK (INSTANT CACHE) =================
-
+  // ================= AI TRASH TALK =================
   async function updateTrash() {
     const line = await getTrashLine();
     setTrashTalk(line);
   }
 
-  // ================= LOAD FIRST QUESTION =================
-
+  // ================= LOAD FIRST QUESTIONS =================
   async function loadFirst() {
     setLoading(true);
 
-    const q = await getNextQuestion();
-    setCurrent(q);
+    const q1 = await getNextQuestion();
+    const q2 = await getNextQuestion();
 
-    await updateTrash(); // preload trash
+    setCurrent(q1);
+    setNextQ(q2);
+
+    await updateTrash();
     setLoading(false);
   }
 
@@ -38,7 +45,6 @@ export default function DuelGame() {
   }, []);
 
   // ================= DEVICE FX =================
-
   function vibrate(ms: number | number[]) {
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
       navigator.vibrate(ms);
@@ -46,35 +52,36 @@ export default function DuelGame() {
   }
 
   // ================= SWIPE HANDLER =================
-
   async function handleSwipe(choice: "a" | "b") {
     if (!current) return;
 
-    const correct = choice === current.correct;
+    // Map A/B to boolean
+    const userAnswer = choice === "a"; // A = TRUE, B = FALSE
+    const correct = userAnswer === current.answer; // ✅ FIXED FIELD
 
     if (correct) {
-      setScore((s) => s + 1);
-      setStreak((s) => s + 1);
-      updateTrash(); // 🔥 instant
-
+      setScore(s => s + 1);
+      setStreak(s => s + 1);
+      updateTrash();
       vibrate(20);
       setFlash(true);
       setTimeout(() => setFlash(false), 150);
     } else {
-      setAiScore((s) => s + 1);
+      setAiScore(s => s + 1);
       setStreak(0);
-      updateTrash(); // 🔥 instant
-
+      updateTrash();
       vibrate([20, 40, 20]);
     }
 
-    // BrainWho infinite AI question loop
-    const next = await getNextQuestion();
-    setCurrent(next);
+    // SHIFT STACK
+    setCurrent(nextQ);
+
+    // PREFETCH NEXT
+    const newNext = await getNextQuestion();
+    setNextQ(newNext);
   }
 
   // ================= RESET =================
-
   async function restartGame() {
     setScore(0);
     setAiScore(0);
@@ -82,8 +89,7 @@ export default function DuelGame() {
     await loadFirst();
   }
 
-  // ================= LOADING UI =================
-
+  // ================= LOADING =================
   if (loading || !current) {
     return (
       <div className="h-full flex items-center justify-center text-purple-400 text-sm animate-pulse">
@@ -92,13 +98,13 @@ export default function DuelGame() {
     );
   }
 
-  // ================= UI =================
-
   const total = score + aiScore || 1;
   const humanPct = (score / total) * 100;
 
   return (
     <div className={`relative h-full w-full overflow-hidden ${flash ? "streak-flash" : ""}`}>
+
+      <DifficultySelector />
 
       <div className="absolute inset-0 bg-gradient-to-b from-purple-900/40 via-black to-black" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(139,92,246,0.25),transparent_65%)]" />
@@ -108,13 +114,13 @@ export default function DuelGame() {
         <h1 className="text-lg font-extrabold text-purple-300">Who’s Smarter</h1>
       </div>
 
-      {/* SCORE HUD */}
+      {/* SCORE */}
       <div className="absolute top-9 left-0 right-0 flex justify-between px-4 text-[11px] text-purple-300 z-30">
         <div className="hud-panel">Score {score}</div>
         <div className="hud-panel">AI {aiScore}</div>
       </div>
 
-      {/* PROGRESS BAR */}
+      {/* PROGRESS */}
       <div className="absolute top-16 left-4 right-4 z-30">
         <div className="h-2 rounded-full bg-neutral-800 overflow-hidden">
           <div
@@ -130,10 +136,9 @@ export default function DuelGame() {
 
       {/* AI AVATAR */}
       <div className="absolute left-2 bottom-[28%] z-40 flex flex-col items-center gap-2">
-        <div className="ai-avatar w-14 h-14 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 flex items-center justify-center text-xl font-black shadow-[0_0_20px_rgba(0,255,255,0.4)]">
+        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 flex items-center justify-center text-xl font-black shadow-[0_0_20px_rgba(0,255,255,0.4)]">
           AI
         </div>
-
         <div className="bg-black/70 border border-purple-500/30 backdrop-blur-xl px-3 py-2 rounded-xl text-xs max-w-[160px] shadow-xl">
           {trashTalk}
         </div>
@@ -146,12 +151,21 @@ export default function DuelGame() {
         </div>
       )}
 
-      {/* MAIN CARD */}
+      {/* CARD STACK */}
       <div className="relative h-full flex items-center justify-center pt-16 pb-8 px-2">
+
+        {/* NEXT STATIC CARD */}
+        {nextQ && (
+          <div className="absolute scale-[0.94] translate-y-2">
+            <StaticCard question={nextQ} />
+          </div>
+        )}
+
+        {/* CURRENT SWIPE CARD */}
         <SwipeCards question={current} onSwipe={handleSwipe} />
       </div>
 
-      {/* RESET BUTTON */}
+      {/* RESET */}
       <button
         onClick={restartGame}
         className="absolute bottom-2 right-2 text-[10px] text-purple-500 opacity-50"

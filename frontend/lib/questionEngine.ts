@@ -1,127 +1,99 @@
-// lib/questionEngine.ts
+import { QUESTIONS, Question, Difficulty } from "./questions";
 
-export type Question = {
-  question: string;
-  a: string;
-  b: string;
-  correct: "a" | "b";
-};
+/* ================= GLOBAL STATE ================= */
 
-// ================= GLOBAL CLIENT CACHE =================
-let questionCache: Question[] = [];
-let cacheIndex = 0;
-let isFetching = false;
-let lastFetchTime = 0;
+let cache: Question[] = [];
+let pointer = 0;
+let difficulty: Difficulty = "medium";
 
-// CONFIG
-const CACHE_TTL = 1000 * 60 * 1; // refresh every 1 min (faster)
-const LOW_WATER_MARK = 3;
-const MAX_CACHE = 40;
+/* ================= SHUFFLE ================= */
 
-// ================= UTILS =================
-
-// Strong shuffle
 function shuffle<T>(arr: T[]): T[] {
-  return arr
-    .map(v => ({ v, r: Math.random() }))
-    .sort((a, b) => a.r - b.r)
-    .map(x => x.v);
+  return [...arr].sort(() => Math.random() - 0.5);
 }
 
-// Deduplicate by question text
-function dedupeQuestions(list: Question[]) {
-  const seen = new Set<string>();
-  return list.filter(q => {
-    const key = q.question.toLowerCase().trim();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+/* ================= NORMALIZER ================= */
+
+function normalizeQuestion(raw: any): Question {
+  return {
+    question: raw.question ?? raw.text ?? "MISSING QUESTION",
+    a: raw.a ?? "True",
+    b: raw.b ?? "False",
+    correct: raw.correct ?? raw.answer ?? true,
+    category: raw.category ?? "logic",
+    difficulty: raw.difficulty ?? "medium",
+    id: raw.id ?? Math.random(),
+  };
 }
 
-// ================= FORCE RESET ON PAGE LOAD =================
+/* ================= LOAD QUESTIONS ================= */
+
+function loadAllQuestions(): Question[] {
+  const raw = Array.isArray(QUESTIONS)
+    ? QUESTIONS
+    : [...(QUESTIONS.easy ?? []), ...(QUESTIONS.medium ?? []), ...(QUESTIONS.hard ?? [])];
+
+  return shuffle(raw.map(normalizeQuestion));
+}
+
+/* ================= DIFFICULTY STORAGE ================= */
+
+function loadDifficulty() {
+  if (typeof window === "undefined") return;
+  const d = localStorage.getItem("bw_difficulty") as Difficulty;
+  if (d) difficulty = d;
+}
+
 if (typeof window !== "undefined") {
-  (window as any).__BWQ_RESET__ = true;
+  loadDifficulty();
+  window.addEventListener("bw-difficulty-change", loadDifficulty);
 }
 
-// ================= GEMINI FETCH =================
-async function fetchGeminiBatch() {
-  if (isFetching) return;
-  isFetching = true;
+/* ================= PUBLIC API ================= */
 
-  try {
-    console.log("🧠 Fetching Gemini questions...");
+export async function getQuestions() {
+  if (!cache.length) cache = loadAllQuestions();
+  return cache;
+}
 
-    const res = await fetch(`/api/geminiBatch?ts=${Date.now()}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ count: 15 }),
-      cache: "no-store",
-    });
+/* ================= ADAPTIVE DIFFICULTY ================= */
 
-    if (!res.ok) throw new Error(`Gemini API failed ${res.status}`);
+export function updateDifficultyFromStreak(streak: number) {
+  if (streak >= 10) difficulty = "hard";
+  else if (streak >= 4) difficulty = "medium";
+  else difficulty = "easy";
 
-    const data = await res.json();
-    if (!Array.isArray(data)) throw new Error("Invalid Gemini JSON");
-
-    const cleaned: Question[] = data.map((q: any) => ({
-      question: String(q.question || "AI glitch 🤖"),
-      a: String(q.a || "Option A"),
-      b: String(q.b || "Option B"),
-      correct: q.correct === "b" ? "b" : "a",
-    }));
-
-    const merged = dedupeQuestions([...questionCache, ...cleaned]);
-    questionCache = shuffle(merged).slice(0, MAX_CACHE);
-
-    cacheIndex = 0;
-
-    console.log("✅ BrainWho cache size:", questionCache.length);
-  } catch (err) {
-    console.error("❌ Gemini fetch failed:", err);
-  } finally {
-    isFetching = false;
-    lastFetchTime = Date.now();
+  if (typeof window !== "undefined") {
+    localStorage.setItem("bw_difficulty", difficulty);
+    window.dispatchEvent(new Event("bw-difficulty-change"));
   }
 }
 
-// ================= PUBLIC API =================
+/* ================= MAIN QUESTION LOOP ================= */
 
-// Preload
-export async function getQuestions(): Promise<Question[]> {
-  // Force reset on reload
-  if ((window as any).__BWQ_RESET__) {
-    questionCache = [];
-    cacheIndex = 0;
-    (window as any).__BWQ_RESET__ = false;
+export async function getNextQuestion(): Promise<Question> {
+  if (!cache.length) cache = loadAllQuestions();
+
+  // FILTER POOL
+  let pool = cache.filter(q => q.difficulty === difficulty);
+  if (!pool.length) pool = cache; // fallback
+
+  // LOOP SAFELY
+  if (pointer >= pool.length) {
+    pointer = 0;
+    pool = shuffle(pool); // reshuffle ONLY the pool
   }
 
-  if (!questionCache.length) {
-    await fetchGeminiBatch();
-  }
-
-  // Background refresh
-  if (Date.now() - lastFetchTime > CACHE_TTL) {
-    fetchGeminiBatch();
-  }
-
-  return questionCache;
+  return pool[pointer++];
 }
 
-// Main game loop
-export async function getNextQuestion(): Promise<Question | null> {
-  if (!questionCache.length) {
-    await fetchGeminiBatch();
-    if (!questionCache.length) return null;
-  }
+/* ================= DEBUG ================= */
 
-  const q = questionCache[cacheIndex];
-  cacheIndex = (cacheIndex + 1) % questionCache.length;
+export function getCurrentDifficulty() {
+  return difficulty;
+}
 
-  // Auto refill
-  if (questionCache.length - cacheIndex < LOW_WATER_MARK) {
-    fetchGeminiBatch();
-  }
-
-  return q;
+export function resetQuestionEngine() {
+  cache = [];
+  pointer = 0;
 }
