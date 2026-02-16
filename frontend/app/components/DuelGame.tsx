@@ -29,8 +29,7 @@ export default function DuelGame() {
   async function loadFirst() {
     setLoading(true);
 
-    const q1 = await getNextQuestion();
-    const q2 = await getNextQuestion();
+       const q2 = await getNextQuestion();
 
     setCurrent(q1);
     setNextQ(q2);
