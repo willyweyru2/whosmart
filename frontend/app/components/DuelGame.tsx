@@ -19,7 +19,7 @@ export default function DuelGame() {
   const [loading, setLoading] = useState(true);
   const [gameOver, setGameOver] = useState(false);
 
-  // AI Trash Talk + dopamine FX
+  // AI Trash Talk
   const [trashTalk, setTrashTalk] = useState("Booting neural duel...");
   const [streak, setStreak] = useState(0);
   const [flash, setFlash] = useState(false);
@@ -33,23 +33,31 @@ export default function DuelGame() {
 
   const randomLine = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
 
+  // ================= LOAD QUESTIONS =================
+
   async function loadQuestions() {
     setLoading(true);
     setGameOver(false);
 
     try {
-      const res = await fetch("/api/geminiQuestions", {
+      const res = await fetch("/api/questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ difficulty: "medium" }),
+        body: JSON.stringify({ used: [] }),
       });
 
       const data = await res.json();
-      if (!Array.isArray(data) || data.length === 0) throw new Error("Invalid AI data");
+      const aiQuestions: Question[] = data.questions;
 
-      setQuestions(data);
-      startNewRound(data);
-    } catch {
+      if (!Array.isArray(aiQuestions) || aiQuestions.length === 0) {
+        throw new Error("Invalid AI data");
+      }
+
+      setQuestions(aiQuestions);
+      startNewRound(aiQuestions);
+    } catch (err) {
+      console.error("❌ AI FAILED, using fallback", err);
+
       const fallback: Question[] = [
         { question: "Which planet has rings?", a: "Saturn", b: "Mars", correct: "a" },
         { question: "2 + 2 = ?", a: "4", b: "5", correct: "a" },
@@ -57,12 +65,15 @@ export default function DuelGame() {
         { question: "Largest ocean?", a: "Pacific", b: "Atlantic", correct: "a" },
         { question: "Fastest land animal?", a: "Cheetah", b: "Lion", correct: "a" },
       ];
+
       setQuestions(fallback);
       startNewRound(fallback);
     }
 
     setLoading(false);
   }
+
+  // ================= ROUND RESET =================
 
   function startNewRound(all: Question[]) {
     const shuffled = [...all].sort(() => Math.random() - 0.5);
@@ -74,11 +85,15 @@ export default function DuelGame() {
     setTrashTalk(randomLine(TRASH_LINES.start));
   }
 
-  function vibrate(ms: number) {
+  // ================= DEVICE FX =================
+
+  function vibrate(ms: number | number[]) {
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
       navigator.vibrate(ms);
     }
   }
+
+  // ================= SWIPE LOGIC =================
 
   function handleSwipe(choice: "a" | "b") {
     const current = roundQuestions[index];
@@ -88,20 +103,30 @@ export default function DuelGame() {
 
     if (correct) {
       setScore((s) => s + 1);
-      setStreak((s) => s + 1);
-      setTrashTalk(streak >= 2 ? randomLine(TRASH_LINES.streak) : randomLine(TRASH_LINES.correct));
+
+      setStreak((s) => {
+        const newStreak = s + 1;
+        setTrashTalk(
+          newStreak >= 3 ? randomLine(TRASH_LINES.streak) : randomLine(TRASH_LINES.correct)
+        );
+        return newStreak;
+      });
+
       setFlash(true);
       vibrate(30);
-      setTimeout(() => setFlash(false), 250);
+      setTimeout(() => setFlash(false), 200);
     } else {
       setAiScore((s) => s + 1);
       setStreak(0);
       setTrashTalk(randomLine(TRASH_LINES.wrong));
-      vibrate([20, 30, 20]);
+      vibrate([20, 40, 20]);
     }
 
-    if (index === roundQuestions.length - 1) setGameOver(true);
-    else setIndex((i) => i + 1);
+    if (index >= roundQuestions.length - 1) {
+      setGameOver(true);
+    } else {
+      setIndex((i) => i + 1);
+    }
   }
 
   function restartGame() {
@@ -113,7 +138,8 @@ export default function DuelGame() {
     loadQuestions();
   }, []);
 
-  // LOADING
+  // ================= LOADING SCREEN =================
+
   if (loading || !roundQuestions[index]) {
     return (
       <div className="h-full flex items-center justify-center text-purple-400 text-sm animate-pulse">
@@ -122,7 +148,8 @@ export default function DuelGame() {
     );
   }
 
-  // GAME OVER
+  // ================= GAME OVER =================
+
   if (gameOver) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center gap-4 bg-black/80 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30">
@@ -139,31 +166,28 @@ export default function DuelGame() {
     );
   }
 
-  // Brain battle %
+  // ================= UI =================
+
   const total = score + aiScore || 1;
   const humanPct = (score / total) * 100;
 
   return (
     <div className={`relative h-full w-full overflow-hidden ${flash ? "streak-flash" : ""}`}>
 
-      {/* BACKGROUND */}
       <div className="absolute inset-0 bg-gradient-to-b from-purple-900/40 via-black to-black" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(139,92,246,0.25),transparent_65%)]" />
 
-      {/* HEADER LOGO (THIS WAS MISSING) */}
       <div className="absolute top-2 left-0 right-0 flex justify-center z-40">
         <h1 className="text-lg font-extrabold tracking-tight text-purple-300 drop-shadow-[0_0_12px_rgba(139,92,246,0.8)]">
           Who’s Smarter
         </h1>
       </div>
 
-      {/* HUD */}
       <div className="absolute top-9 left-0 right-0 flex justify-between px-4 text-[11px] text-purple-300 z-30">
         <div className="hud-panel">Q {index + 1}/5</div>
         <div className="hud-panel">Score {score}</div>
       </div>
 
-      {/* BRAIN POWER BAR */}
       <div className="absolute top-16 left-4 right-4 z-30">
         <div className="h-2 rounded-full bg-neutral-800 overflow-hidden">
           <div
@@ -177,7 +201,6 @@ export default function DuelGame() {
         </div>
       </div>
 
-      {/* AI AVATAR */}
       <div className="absolute left-2 bottom-[28%] z-40 flex flex-col items-center gap-2">
         <div className="ai-avatar w-14 h-14 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 flex items-center justify-center text-xl font-black shadow-[0_0_20px_rgba(0,255,255,0.4)]">
           AI
@@ -188,14 +211,12 @@ export default function DuelGame() {
         </div>
       </div>
 
-      {/* STREAK HUD */}
-      {streak >= 2 && (
+      {streak >= 3 && (
         <div className="absolute right-4 top-[35%] text-xs font-bold text-yellow-400 animate-pulse z-50">
           🔥 {streak} STREAK
         </div>
       )}
 
-      {/* SWIPE ZONE */}
       <div className="relative h-full flex items-center justify-center pt-16 pb-8 px-2">
         <SwipeCards question={roundQuestions[index]} onSwipe={handleSwipe} />
       </div>

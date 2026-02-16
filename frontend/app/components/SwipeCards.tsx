@@ -17,25 +17,26 @@ export default function SwipeCards({
   onSwipe: (choice: "a" | "b") => void;
 }) {
   const x = useMotionValue(0);
-  const rotate = useTransform(x, [-300, 300], [-22, 22]);
-  const opacity = useTransform(x, [-300, 0, 300], [0.2, 1, 0.2]);
+  const rotate = useTransform(x, [-250, 250], [-18, 18]);
+  const opacity = useTransform(x, [-250, 0, 250], [0.2, 1, 0.2]);
 
-  const rightGlow = useTransform(x, [0, 160], [0, 1]);
-  const leftGlow = useTransform(x, [-160, 0], [1, 0]);
+  const rightGlow = useTransform(x, [0, 140], [0, 1]);
+  const leftGlow = useTransform(x, [-140, 0], [1, 0]);
 
-  const rightLabel = useTransform(x, [60, 180], [0, 1]);
-  const leftLabel = useTransform(x, [-180, -60], [1, 0]);
+  const rightLabel = useTransform(x, [60, 160], [0, 1]);
+  const leftLabel = useTransform(x, [-160, -60], [1, 0]);
 
-  const SWIPE_THRESHOLD = 140;
+  const SWIPE_THRESHOLD = 120;
 
-  // AI prediction resets per question
+  // AI prediction (random per card)
   const [aiGuess, setAiGuess] = useState<"a" | "b">("a");
 
-  // 🔥 RESET CARD POSITION WHEN QUESTION CHANGES
+  // Reset per question
   useEffect(() => {
+    x.stop(); // stop any running animation
     x.set(0);
     setAiGuess(Math.random() > 0.5 ? "a" : "b");
-  }, [question.question]); // critical
+  }, [question.question]);
 
   function vibrate(ms: number | number[]) {
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
@@ -43,23 +44,27 @@ export default function SwipeCards({
     }
   }
 
+  // Animate swipe programmatically (for buttons)
+  function throwCard(choice: "a" | "b") {
+    const target = choice === "a" ? 700 : -700;
+    vibrate(20);
+    animate(x, target, { duration: 0.25, ease: "easeOut" });
+    setTimeout(() => onSwipe(choice), 180);
+  }
+
   function handleDragEnd(_: any, info: any) {
     const offset = info.offset.x;
     const velocity = info.velocity.x;
 
-    // THROW RIGHT
-    if (offset > SWIPE_THRESHOLD || velocity > 900) {
-      vibrate(30);
-      animate(x, 700, { duration: 0.25, ease: "easeOut" });
-      setTimeout(() => onSwipe("a"), 180);
+    // RIGHT
+    if (offset > SWIPE_THRESHOLD || velocity > 600) {
+      throwCard("a");
       return;
     }
 
-    // THROW LEFT
-    if (offset < -SWIPE_THRESHOLD || velocity < -900) {
-      vibrate([20, 30, 20]);
-      animate(x, -700, { duration: 0.25, ease: "easeOut" });
-      setTimeout(() => onSwipe("b"), 180);
+    // LEFT
+    if (offset < -SWIPE_THRESHOLD || velocity < -600) {
+      throwCard("b");
       return;
     }
 
@@ -86,14 +91,13 @@ export default function SwipeCards({
 
       {/* MAIN CARD */}
       <motion.div
-        key={question.question} // 🔥 FORCE REMOUNT PER QUESTION
+        key={question.question}
         drag="x"
-        dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={0.18}
+        dragElastic={0.2}
         style={{ x, rotate, opacity }}
         onDragEnd={handleDragEnd}
-        whileDrag={{ scale: 1.06 }}
-        transition={{ type: "spring", stiffness: 500, damping: 28 }}
+        whileDrag={{ scale: 1.05 }}
+        transition={{ type: "spring", stiffness: 480, damping: 28 }}
         className="
           bg-gradient-to-br from-[#0b0016] via-black to-[#120024]
           border border-purple-500/40
@@ -101,8 +105,7 @@ export default function SwipeCards({
           w-full max-w-[380px] h-[78%]
           shadow-[0_0_120px_rgba(139,92,246,0.35)]
           text-center select-none flex flex-col justify-center
-          backdrop-blur-2xl relative
-          will-change-transform
+          backdrop-blur-2xl relative will-change-transform
         "
       >
         {/* SWIPE LABELS */}
@@ -140,17 +143,17 @@ export default function SwipeCards({
         </div>
       </motion.div>
 
-      {/* FLOATING TIKTOK BUTTONS */}
+      {/* TIKTOK BUTTONS */}
       <div className="absolute right-3 bottom-1/3 flex flex-col gap-4 z-40">
         <button
-          onClick={() => onSwipe("b")}
+          onClick={() => throwCard("b")}
           className="w-14 h-14 rounded-full bg-red-600/90 backdrop-blur-xl border border-white/20 text-white text-xl font-bold flex items-center justify-center shadow-[0_0_20px_rgba(255,0,0,0.4)] active:scale-90 transition"
         >
           ❌
         </button>
 
         <button
-          onClick={() => onSwipe("a")}
+          onClick={() => throwCard("a")}
           className="w-14 h-14 rounded-full bg-blue-600/90 backdrop-blur-xl border border-white/20 text-white text-xl font-bold flex items-center justify-center shadow-[0_0_20px_rgba(0,200,255,0.5)] active:scale-90 transition"
         >
           ✅
