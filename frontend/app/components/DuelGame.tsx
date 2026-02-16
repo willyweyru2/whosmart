@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import SwipeCards from "./SwipeCards";
 import StaticCard from "./StaticCard";
 import { getNextQuestion } from "@/lib/questionEngine";
-import type { Question } from "@/lib/questionEngine"; // ✅ SINGLE SOURCE OF TRUTH
-
+import type { Question } from "@/lib/questions"; // ✅ CORRECT
 import { getTrashLine } from "@/lib/trashEngine";
 import DifficultySelector from "./DifficultySelector";
+
 
 export default function DuelGame() {
   const [current, setCurrent] = useState<Question | null>(null);
