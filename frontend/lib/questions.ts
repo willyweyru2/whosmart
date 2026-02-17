@@ -74,6 +74,6 @@ export const QUESTIONS: Question[] = [
 
   { id: 70, question: "If all humans are mortal and Socrates is human, is Socrates mortal?", a: "Yes", b: "No", answer: true, category: "logic", difficulty: "easy" },
   { id: 71, question: "If A implies B and A is true, must B be true?", a: "Yes", b: "No", answer: true, category: "logic", difficulty: "medium" },
-  { id: 72, question: "Is 'All ravens are black' logically equivalent to 'All non-black things are not ravens'?", a: "Yes", b: "No", answer: true, category: "logic", difficulty: "hard" },
+  { id: 72, question: "If 'All ravens are black' logically equivalent to 'All non-black things are not ravens'?", a: "Yes", b: "No", answer: true, category: "logic", difficulty: "hard" },
   { id: 73, question: "If a statement and its negation are both true, is the system inconsistent?", a: "Yes", b: "No", answer: true, category: "logic", difficulty: "hard" },
 ];

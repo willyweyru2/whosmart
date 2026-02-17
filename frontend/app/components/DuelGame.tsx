@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import StaticCard from "./StaticCard";
+import Explosion from "./Explosion";
 import type { Question, Difficulty } from "@/lib/questions";
 import { getTrashLine } from "@/lib/trashEngine";
 import { speak, stopSpeak } from "@/lib/voiceEngine";
 import DifficultySelector from "./DifficultySelector";
+import VoiceSelector from "./VoiceSelector";
 import {
   getNextQuestion,
   peekNextQuestion,
@@ -25,16 +27,15 @@ export default function DuelGame() {
   const [trashNo, setTrashNo] = useState("");
 
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
-
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+
+  const [explode, setExplode] = useState(false);
 
   /* ================= TRASH TALK ================= */
   function updateTrash() {
     const t1 = getTrashLine();
     let t2 = getTrashLine();
-
-    // avoid duplicate trash lines
-    if (t2 === t1) t2 = getTrashLine();
+    if (t1 === t2) t2 = getTrashLine();
 
     setTrashYes(t1);
     setTrashNo(t2);
@@ -45,8 +46,7 @@ export default function DuelGame() {
   /* ================= INIT ================= */
   useEffect(() => {
     resetQuestionPool(difficulty);
-    const first = getNextQuestion();
-    setCurrent(first);
+    setCurrent(getNextQuestion());
     setNextQ(peekNextQuestion());
     updateTrash();
   }, [difficulty]);
@@ -61,11 +61,22 @@ export default function DuelGame() {
         : current.answer === choice;
 
     if (correct) {
-      setScore((s) => s + 1);
-      setRage((r) => Math.max(0, r - 1));
+      setScore(s => {
+        const newScore = s + 1;
+
+        // 💥 EXPLOSION every 5 correct answers
+        if (newScore % 5 === 0) {
+          setExplode(true);
+          setTimeout(() => setExplode(false), 2500);
+        }
+
+        return newScore;
+      });
+
+      setRage(r => Math.max(0, r - 1));
     } else {
-      setAiScore((s) => s + 1);
-      setRage((r) => Math.min(10, r + 1));
+      setAiScore(s => s + 1);
+      setRage(r => Math.min(10, r + 1));
 
       // screen shake
       document.body.classList.add("shake");
@@ -73,15 +84,16 @@ export default function DuelGame() {
     }
 
     updateTrash();
-
-    const next = nextQ ?? getNextQuestion();
-    setCurrent(next);
+    setCurrent(nextQ ?? getNextQuestion());
     setNextQ(getNextQuestion());
   }
 
   /* ================= UI ================= */
   return (
     <div className="relative h-full w-full bg-black text-white cyber-bg overflow-hidden">
+
+      {/* EXPLOSION */}
+      <Explosion trigger={explode} />
 
       {/* SCANLINES */}
       <div className="scanlines" />
@@ -98,24 +110,27 @@ export default function DuelGame() {
         <DifficultySelector onDifficultyChange={setDifficulty} />
       </div>
 
-      {/* HUD BAR */}
-      <div className="flex justify-between px-4 text-xs text-purple-300 mt-2 font-mono">
-        <div>You: {score}</div>
-        <div>AI: {aiScore}</div>
-        <div className={`rage-${rage}`}>Rage: {rage}</div>
-      </div>
+      {/* VOICE PICKER */}
+      <VoiceSelector />
 
       {/* VOICE TOGGLE */}
       <div className="flex justify-center mt-1">
         <button
           onClick={() => {
-            setVoiceEnabled((v) => !v);
+            setVoiceEnabled(v => !v);
             stopSpeak();
           }}
           className="px-3 py-1 text-xs border border-purple-500 rounded neon-btn"
         >
           {voiceEnabled ? "🔊 AI Voice ON" : "🔇 AI Voice OFF"}
         </button>
+      </div>
+
+      {/* HUD */}
+      <div className="flex justify-between px-4 text-xs text-purple-300 mt-2 font-mono">
+        <div>You: {score}</div>
+        <div>AI: {aiScore}</div>
+        <div className={`rage-${rage}`}>Rage: {rage}</div>
       </div>
 
       {/* GAME AREA */}
