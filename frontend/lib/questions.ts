@@ -1,5 +1,13 @@
 // lib/questions.ts
 
+const baseCategories: Category[] = ["science", "logic", "math"];
+
+export const score = {
+  categoryCorrect: Object.fromEntries(baseCategories.map(c => [c, 0])) as Record<Category, number>,
+  categoryTotal: Object.fromEntries(baseCategories.map(c => [c, 0])) as Record<Category, number>,
+};
+
+
 export type Difficulty = "easy" | "medium" | "hard";
 
 export type Category =
