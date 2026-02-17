@@ -57,9 +57,8 @@ export default function SwipeCards({
     vibrate(10);
     const target = choice === "a" ? 1000 : -1000;
 
-    await animate(x, target, { duration: 0.25, ease: "easeOut" }).finished;
-    onSwipe(choice);
-  }
+    await new Promise(resolve => {
+      animate(x, target, { duration: 0.25, ease: "easeOut" }).then(resolve);
 
   function handleDragEnd(_: any, info: any) {
     if (hasSwiped.current) return;
