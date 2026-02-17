@@ -1,5 +1,17 @@
 // lib/questions.ts
 
+export const ALL_CATEGORIES: Category[] = [
+  "science",
+  "philosophy",
+  "politics",
+  "math",
+  "logic",
+  "general",
+  "paradox",
+  "cognitive",
+  "quantum",
+];
+
 const baseCategories: Category[] = ["science", "logic", "math"];
 
 export const score = {
