@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import StaticCard from "./StaticCard";
 import type { Question, Difficulty } from "@/lib/questions";
-import { getTrashLine } from "@/lib/trashEngine";
+import { getSmartTrash } from "@/lib/trashEngine"; // ✅ NEW SMART TRASH
 import DifficultySelector from "./DifficultySelector";
 import {
   getNextQuestion,
@@ -22,11 +22,6 @@ export default function DuelGame() {
   const [flash, setFlash] = useState(false);
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
 
-  /* ================= AI TRASH ================= */
-  function updateTrash() {
-    getTrashLine().then(setTrashTalk).catch(() => {});
-  }
-
   /* ================= INIT ================= */
   useEffect(() => {
     resetQuestionPool(difficulty);
@@ -36,7 +31,7 @@ export default function DuelGame() {
 
     setCurrent(q1 ?? null);
     setNextQ(q2 ?? null);
-    updateTrash();
+    setTrashTalk("Initializing opponent intelligence...");
   }, [difficulty]);
 
   /* ================= DEVICE FX ================= */
@@ -51,12 +46,15 @@ export default function DuelGame() {
     if (!current) return;
 
     const correctAnswer =
-      typeof (current as any).answer === "boolean"
-        ? ((current as any).answer ? "a" : "b")
-        : ((current as any).answer as "a" | "b");
+      typeof current.answer === "boolean"
+        ? current.answer
+          ? "a"
+          : "b"
+        : current.answer;
 
     const correct = choice === correctAnswer;
 
+    /* SCORE LOGIC */
     if (correct) {
       setScore(s => s + 1);
       setStreak(s => s + 1);
@@ -69,7 +67,8 @@ export default function DuelGame() {
       vibrate([15, 40, 15]);
     }
 
-    updateTrash();
+    /* SMART TRASH TALK */
+    setTrashTalk(getSmartTrash(current, correct));
 
     /* SHIFT STACK */
     const newCurrent = nextQ ?? getNextQuestion();
@@ -91,7 +90,7 @@ export default function DuelGame() {
 
     setCurrent(q1 ?? null);
     setNextQ(q2 ?? null);
-    updateTrash();
+    setTrashTalk("AI rebooted. Prepare humiliation.");
   }
 
   /* ================= PROGRESS ================= */
@@ -159,7 +158,7 @@ export default function DuelGame() {
           </div>
         )}
 
-        {/* CURRENT CARD (BUTTON MODE) */}
+        {/* CURRENT CARD */}
         {current && (
           <div className="bg-black border border-purple-500/40 rounded-3xl p-6 text-white w-[92%] max-w-[380px] h-[75%] flex flex-col justify-center text-center shadow-2xl z-20">
             <h2 className="text-xl font-bold mb-10">{current.question}</h2>

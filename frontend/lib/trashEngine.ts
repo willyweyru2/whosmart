@@ -1,45 +1,60 @@
-let trashCache: string[] = [];
-let index = 0;
-let fetching = false;
+import type { Question } from "./questions";
 
-const LOW_WATER = 5;
+/* BASE TRASH POOL */
+const BASE_TRASH = [
+  "Human neural lag detected.",
+  "Your cortex is buffering.",
+  "You think slow.",
+  "Interesting. Still inferior.",
+  "Carbon-based disappointment.",
+  "Try again, organic unit.",
+  "Your neurons are overheating.",
+];
 
-async function fetchTrashBatch() {
-  if (fetching) return;
-  fetching = true;
+/* SMART TRASH BY CATEGORY */
+const CATEGORY_TRASH: Record<string, string[]> = {
+  science: [
+    "Physics says you're wrong.",
+    "Your science teacher weeps.",
+    "Reality disagrees with you.",
+  ],
+  philosophy: [
+    "Descartes would facepalm.",
+    "Existential crisis detected.",
+    "Cogito? More like forgot-o.",
+  ],
+  logic: [
+    "Logic circuits outperform you.",
+    "Your reasoning chain snapped.",
+    "Boolean humiliation confirmed.",
+  ],
+  math: [
+    "Arithmetic annihilation.",
+    "Your calculator is smarter.",
+    "Numbers reject you.",
+  ],
+  general: [
+    "Common knowledge not found.",
+    "General ignorance confirmed.",
+  ],
+};
 
-  try {
-    const res = await fetch("/api/geminiTrashBatch", {
-      method: "POST",
-      cache: "no-store",
-    });
+/* TRASH WHEN USER WINS */
+const PRAISE_TRASH = [
+  "Impossible. You are not supposed to win.",
+  "Statistical anomaly detected.",
+  "Human intelligence spike detected.",
+  "Are you cheating?",
+];
 
-    const data = await res.json();
-    if (Array.isArray(data)) {
-      trashCache.push(...data);
-    }
-  } catch (e) {
-    console.error("Trash fetch failed", e);
-  } finally {
-    fetching = false;
+/* SMART TRASH FUNCTION */
+export function getSmartTrash(q: Question, correct: boolean): string {
+  if (correct) {
+    return PRAISE_TRASH[Math.floor(Math.random() * PRAISE_TRASH.length)];
   }
-}
 
-export async function getTrashLine() {
-  if (trashCache.length === 0) {
-    await fetchTrashBatch();
-  }
+  const catLines = CATEGORY_TRASH[q.category] || BASE_TRASH;
+  const allLines = [...BASE_TRASH, ...catLines];
 
-  const line = trashCache[index] || "Neural silence...";
-
-  index++;
-
-  if (index >= trashCache.length) index = 0;
-
-  // Background refill
-  if (trashCache.length - index < LOW_WATER) {
-    fetchTrashBatch();
-  }
-
-  return line;
+  return allLines[Math.floor(Math.random() * allLines.length)];
 }
