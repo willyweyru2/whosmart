@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import StaticCard from "./StaticCard";
 import type { Question, Difficulty } from "@/lib/questions";
-import { getSmartTrash } from "@/lib/trashEngine"; // ✅ NEW SMART TRASH
+import { getTrashLine } from "@/lib/trashEngine";
+import { speak, stopSpeak } from "@/lib/voiceEngine";
 import DifficultySelector from "./DifficultySelector";
 import {
   getNextQuestion,
@@ -12,181 +13,131 @@ import {
 } from "@/lib/questionEngine";
 
 export default function DuelGame() {
+  /* ================= GAME STATE ================= */
   const [current, setCurrent] = useState<Question | null>(null);
   const [nextQ, setNextQ] = useState<Question | null>(null);
 
   const [score, setScore] = useState(0);
   const [aiScore, setAiScore] = useState(0);
-  const [streak, setStreak] = useState(0);
-  const [trashTalk, setTrashTalk] = useState("Booting neural duel...");
-  const [flash, setFlash] = useState(false);
+  const [rage, setRage] = useState(0);
+
+  const [trashYes, setTrashYes] = useState("");
+  const [trashNo, setTrashNo] = useState("");
+
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
+
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
+
+  /* ================= TRASH TALK ================= */
+  function updateTrash() {
+    const t1 = getTrashLine();
+    let t2 = getTrashLine();
+
+    // avoid duplicate trash lines
+    if (t2 === t1) t2 = getTrashLine();
+
+    setTrashYes(t1);
+    setTrashNo(t2);
+
+    if (voiceEnabled) speak(t1);
+  }
 
   /* ================= INIT ================= */
   useEffect(() => {
     resetQuestionPool(difficulty);
-
-    const q1 = getNextQuestion();
-    const q2 = peekNextQuestion();
-
-    setCurrent(q1 ?? null);
-    setNextQ(q2 ?? null);
-    setTrashTalk("Initializing opponent intelligence...");
+    const first = getNextQuestion();
+    setCurrent(first);
+    setNextQ(peekNextQuestion());
+    updateTrash();
   }, [difficulty]);
-
-  /* ================= DEVICE FX ================= */
-  function vibrate(ms: number | number[]) {
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-      navigator.vibrate(ms);
-    }
-  }
 
   /* ================= ANSWER HANDLER ================= */
   function handleAnswer(choice: "a" | "b") {
     if (!current) return;
 
-    const correctAnswer =
+    const correct =
       typeof current.answer === "boolean"
-        ? current.answer
-          ? "a"
-          : "b"
-        : current.answer;
+        ? (current.answer ? "a" : "b") === choice
+        : current.answer === choice;
 
-    const correct = choice === correctAnswer;
-
-    /* SCORE LOGIC */
     if (correct) {
-      setScore(s => s + 1);
-      setStreak(s => s + 1);
-      vibrate(15);
-      setFlash(true);
-      setTimeout(() => setFlash(false), 120);
+      setScore((s) => s + 1);
+      setRage((r) => Math.max(0, r - 1));
     } else {
-      setAiScore(s => s + 1);
-      setStreak(0);
-      vibrate([15, 40, 15]);
+      setAiScore((s) => s + 1);
+      setRage((r) => Math.min(10, r + 1));
+
+      // screen shake
+      document.body.classList.add("shake");
+      setTimeout(() => document.body.classList.remove("shake"), 150);
     }
 
-    /* SMART TRASH TALK */
-    setTrashTalk(getSmartTrash(current, correct));
+    updateTrash();
 
-    /* SHIFT STACK */
-    const newCurrent = nextQ ?? getNextQuestion();
-    const newNext = getNextQuestion();
-
-    setCurrent(newCurrent ?? null);
-    setNextQ(newNext ?? null);
+    const next = nextQ ?? getNextQuestion();
+    setCurrent(next);
+    setNextQ(getNextQuestion());
   }
 
-  /* ================= RESET ================= */
-  function restartGame() {
-    setScore(0);
-    setAiScore(0);
-    setStreak(0);
-
-    resetQuestionPool(difficulty);
-    const q1 = getNextQuestion();
-    const q2 = peekNextQuestion();
-
-    setCurrent(q1 ?? null);
-    setNextQ(q2 ?? null);
-    setTrashTalk("AI rebooted. Prepare humiliation.");
-  }
-
-  /* ================= PROGRESS ================= */
-  const total = score + aiScore || 1;
-  const humanPct = (score / total) * 100;
-
-  /* ================= RENDER ================= */
+  /* ================= UI ================= */
   return (
-    <div className={`relative h-full w-full overflow-hidden ${flash ? "streak-flash" : ""}`}>
+    <div className="relative h-full w-full bg-black text-white cyber-bg overflow-hidden">
 
-      <DifficultySelector onDifficultyChange={setDifficulty} />
+      {/* SCANLINES */}
+      <div className="scanlines" />
 
-      <div className="absolute inset-0 bg-gradient-to-b from-purple-900/40 via-black to-black" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(139,92,246,0.25),transparent_65%)]" />
-
-      {/* HEADER */}
-      <div className="absolute top-2 left-0 right-0 flex justify-center z-40">
-        <h1 className="text-lg font-extrabold text-purple-300">Who’s Smarter</h1>
+      {/* TITLE */}
+      <div className="text-center pt-2 neon-title">
+        <h1 className="text-lg font-extrabold tracking-widest glitch-text">
+          WHO’S SMARTER
+        </h1>
       </div>
 
-      {/* SCORE */}
-      <div className="absolute top-9 left-0 right-0 flex justify-between px-4 text-[11px] text-purple-300 z-30">
-        <div className="hud-panel">You {score}</div>
-        <div className="hud-panel">AI {aiScore}</div>
+      {/* DIFFICULTY */}
+      <div className="flex justify-center mt-2">
+        <DifficultySelector onDifficultyChange={setDifficulty} />
       </div>
 
-      {/* PROGRESS BAR */}
-      <div className="absolute top-16 left-4 right-4 z-30">
-        <div className="h-2 rounded-full bg-neutral-800 overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 transition-all duration-300"
-            style={{ width: `${humanPct}%` }}
-          />
-        </div>
-        <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-          <span>You</span>
-          <span>AI</span>
-        </div>
+      {/* HUD BAR */}
+      <div className="flex justify-between px-4 text-xs text-purple-300 mt-2 font-mono">
+        <div>You: {score}</div>
+        <div>AI: {aiScore}</div>
+        <div className={`rage-${rage}`}>Rage: {rage}</div>
       </div>
 
-      {/* AI AVATAR */}
-      <div className="absolute left-2 bottom-[28%] z-40 flex flex-col items-center gap-2">
-        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 flex items-center justify-center text-xl font-black shadow-[0_0_20px_rgba(0,255,255,0.4)]">
-          AI
-        </div>
-        <div className="bg-black/70 border border-purple-500/30 backdrop-blur-xl px-3 py-2 rounded-xl text-xs max-w-[160px] shadow-xl">
-          {trashTalk}
-        </div>
+      {/* VOICE TOGGLE */}
+      <div className="flex justify-center mt-1">
+        <button
+          onClick={() => {
+            setVoiceEnabled((v) => !v);
+            stopSpeak();
+          }}
+          className="px-3 py-1 text-xs border border-purple-500 rounded neon-btn"
+        >
+          {voiceEnabled ? "🔊 AI Voice ON" : "🔇 AI Voice OFF"}
+        </button>
       </div>
 
-      {/* STREAK */}
-      {streak >= 3 && (
-        <div className="absolute right-4 top-[35%] text-xs font-bold text-yellow-400 animate-pulse z-50">
-          🔥 {streak} STREAK
-        </div>
-      )}
+      {/* GAME AREA */}
+      <div className="flex items-center justify-center h-[85%] relative">
 
-      {/* CARD STACK */}
-      <div className="relative h-full flex items-center justify-center pt-16 pb-8 px-2">
-
-        {/* NEXT CARD */}
+        {/* NEXT CARD HOLOGRAM */}
         {nextQ && (
-          <div className="absolute scale-[0.94] translate-y-2">
-            <StaticCard key={nextQ.id} question={nextQ} />
+          <div className="absolute scale-[0.94] translate-y-3 opacity-25 pointer-events-none hologram">
+            <StaticCard question={nextQ} onAnswer={() => {}} />
           </div>
         )}
 
-        {/* CURRENT CARD */}
+        {/* MAIN CARD */}
         {current && (
-          <div className="bg-black border border-purple-500/40 rounded-3xl p-6 text-white w-[92%] max-w-[380px] h-[75%] flex flex-col justify-center text-center shadow-2xl z-20">
-            <h2 className="text-xl font-bold mb-10">{current.question}</h2>
-
-            <button
-              onClick={() => handleAnswer("a")}
-              className="bg-blue-600 py-3 rounded-lg mb-4 font-semibold hover:scale-105 transition"
-            >
-              {current.a}
-            </button>
-
-            <button
-              onClick={() => handleAnswer("b")}
-              className="bg-red-600 py-3 rounded-lg font-semibold hover:scale-105 transition"
-            >
-              {current.b}
-            </button>
-          </div>
+          <StaticCard
+            question={current}
+            onAnswer={handleAnswer}
+            trashYes={trashYes}
+            trashNo={trashNo}
+          />
         )}
       </div>
-
-      {/* RESET */}
-      <button
-        onClick={restartGame}
-        className="absolute bottom-2 right-2 text-[10px] text-purple-500 opacity-50"
-      >
-        Reset AI
-      </button>
     </div>
   );
 }

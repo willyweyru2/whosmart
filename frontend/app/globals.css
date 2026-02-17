@@ -143,3 +143,14 @@ body {
     0 0 12px rgba(139,92,246,0.7),
     0 0 30px rgba(34,211,238,0.4);
 }
+.trash-text {
+  font-size: 10px;
+  color: #9333ea;
+  font-family: monospace;
+  animation: flicker 3s infinite;
+}
+
+@keyframes flicker {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}

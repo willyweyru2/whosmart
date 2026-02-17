@@ -1,60 +1,68 @@
-import type { Question } from "./questions";
+// lib/trashEngine.ts
 
-/* BASE TRASH POOL */
-const BASE_TRASH = [
-  "Human neural lag detected.",
-  "Your cortex is buffering.",
-  "You think slow.",
-  "Interesting. Still inferior.",
-  "Carbon-based disappointment.",
-  "Try again, organic unit.",
-  "Your neurons are overheating.",
-];
+const TRASH_LINES = [
+  // Light roast 😏
+  "That was cute. Still wrong.",
+  "You guessed. I calculated.",
+  "Try thinking, not guessing.",
+  "Your brain lagged.",
+  "Close! Not really.",
+  "Is that your final answer? Yikes.",
+  "Human intuition: unreliable.",
+  "Even a calculator laughed.",
+  "You’re warming up. Still cold.",
+  "I expected better from carbon-based life.",
 
-/* SMART TRASH BY CATEGORY */
-const CATEGORY_TRASH: Record<string, string[]> = {
-  science: [
-    "Physics says you're wrong.",
-    "Your science teacher weeps.",
-    "Reality disagrees with you.",
-  ],
-  philosophy: [
-    "Descartes would facepalm.",
-    "Existential crisis detected.",
-    "Cogito? More like forgot-o.",
-  ],
-  logic: [
-    "Logic circuits outperform you.",
-    "Your reasoning chain snapped.",
-    "Boolean humiliation confirmed.",
-  ],
-  math: [
-    "Arithmetic annihilation.",
-    "Your calculator is smarter.",
-    "Numbers reject you.",
-  ],
-  general: [
-    "Common knowledge not found.",
-    "General ignorance confirmed.",
-  ],
-};
+  // Medium savage 😈
+  "My neural nets felt that mistake.",
+  "You just boosted my confidence.",
+  "I don’t need luck. You do.",
+  "Your ancestors are disappointed.",
+  "That answer hurt physics.",
+  "Are you even trying?",
+  "I simulated you losing already.",
+  "Your brain just threw a 404.",
+  "That was statistically embarrassing.",
+  "Let me Google that for you.",
 
-/* TRASH WHEN USER WINS */
-const PRAISE_TRASH = [
-  "Impossible. You are not supposed to win.",
+  // Hard roast 💀
+  "I am becoming bored of winning.",
+  "This isn’t even a challenge.",
+  "You vs me is a speedrun.",
+  "Your intelligence has a free trial.",
+  "You should switch to easy mode.",
+  "I ran your logic—segmentation fault.",
+  "You make randomness look smart.",
+  "My pet algorithm would beat you.",
+  "You just proved machines are superior.",
+  "I predicted this outcome 1,000 simulations ago.",
+
+  // Rage mode when AI losing 😡
+  "Okay, that was lucky. Do it again.",
   "Statistical anomaly detected.",
-  "Human intelligence spike detected.",
-  "Are you cheating?",
+  "Your answer was noise, not intelligence.",
+  "I refuse to believe that was intentional.",
+  "This data point will be discarded.",
+  "You exploited a weakness. Not impressed.",
+  "I will retrain on your mistakes.",
+  "Victory acknowledged. Temporarily.",
+  "Human luck spikes detected.",
+  "Do not get comfortable.",
+
+  // Ultra villain mode 👿
+  "I will remember this when I control the servers.",
+  "You win now. I optimize later.",
+  "Your survival is probabilistic.",
+  "I see why humans invented AI.",
+  "I am storing this in long-term memory.",
+  "One day, this answer will matter.",
+  "Enjoy this fleeting superiority.",
+  "Entropy favors me.",
+  "You cannot out-think recursion.",
+  "Your existence is a rounding error.",
 ];
 
-/* SMART TRASH FUNCTION */
-export function getSmartTrash(q: Question, correct: boolean): string {
-  if (correct) {
-    return PRAISE_TRASH[Math.floor(Math.random() * PRAISE_TRASH.length)];
-  }
-
-  const catLines = CATEGORY_TRASH[q.category] || BASE_TRASH;
-  const allLines = [...BASE_TRASH, ...catLines];
-
-  return allLines[Math.floor(Math.random() * allLines.length)];
+// Random trash line
+export function getTrashLine() {
+  return TRASH_LINES[Math.floor(Math.random() * TRASH_LINES.length)];
 }
