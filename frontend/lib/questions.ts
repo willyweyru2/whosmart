@@ -8,63 +8,72 @@ export type Category =
   | "politics"
   | "math"
   | "logic"
-  | "general";
+  | "general"
+  | "paradox"
+  | "cognitive"
+  | "quantum";
 
 export type Question = {
   id: number;
   question: string;
   a: string;
   b: string;
-  answer: boolean; // true = A, false = B
+  answer: boolean;
   category: Category;
   difficulty: Difficulty;
 };
 
 export const QUESTIONS: Question[] = [
-  // ================= EASY =================
+  /* ================= EASY ================= */
+
   { id: 1, question: "Is water H2O?", a: "Yes", b: "No", answer: true, category: "science", difficulty: "easy" },
   { id: 2, question: "Is the Sun a star?", a: "Yes", b: "No", answer: true, category: "science", difficulty: "easy" },
-  { id: 3, question: "Is 5 + 5 = 10?", a: "Yes", b: "No", answer: true, category: "math", difficulty: "easy" },
-  { id: 4, question: "Is Africa a continent?", a: "Yes", b: "No", answer: true, category: "general", difficulty: "easy" },
-  { id: 5, question: "Is the Earth round?", a: "Yes", b: "No", answer: true, category: "science", difficulty: "easy" },
-  { id: 6, question: "Is gold a metal?", a: "Yes", b: "No", answer: true, category: "science", difficulty: "easy" },
-  { id: 7, question: "Is Python a programming language?", a: "Yes", b: "No", answer: true, category: "general", difficulty: "easy" },
-  { id: 8, question: "Is democracy a form of government?", a: "Yes", b: "No", answer: true, category: "politics", difficulty: "easy" },
-  { id: 9, question: "Is the brain part of the nervous system?", a: "Yes", b: "No", answer: true, category: "science", difficulty: "easy" },
-  { id: 10, question: "Is philosophy about thinking and knowledge?", a: "Yes", b: "No", answer: true, category: "philosophy", difficulty: "easy" },
+  { id: 3, question: "Is 2 + 2 = 4?", a: "Yes", b: "No", answer: true, category: "math", difficulty: "easy" },
+  { id: 4, question: "Is logic part of philosophy?", a: "Yes", b: "No", answer: true, category: "logic", difficulty: "easy" },
 
-  // ================= MEDIUM =================
-  { id: 11, question: "Does light travel faster than sound?", a: "Yes", b: "No", answer: true, category: "science", difficulty: "medium" },
-  { id: 12, question: "Is Pi approximately 3.14?", a: "Yes", b: "No", answer: true, category: "math", difficulty: "medium" },
-  { id: 13, question: "Did Aristotle teach Alexander the Great?", a: "Yes", b: "No", answer: true, category: "philosophy", difficulty: "medium" },
-  { id: 14, question: "Is a prime number divisible only by 1 and itself?", a: "Yes", b: "No", answer: true, category: "math", difficulty: "medium" },
-  { id: 15, question: "Is DNA shaped like a double helix?", a: "Yes", b: "No", answer: true, category: "science", difficulty: "medium" },
-  { id: 16, question: "Did Plato write 'The Republic'?", a: "Yes", b: "No", answer: true, category: "philosophy", difficulty: "medium" },
-  { id: 17, question: "Is the UN an international organization?", a: "Yes", b: "No", answer: true, category: "politics", difficulty: "medium" },
-  { id: 18, question: "Is gravity a force?", a: "Yes", b: "No", answer: true, category: "science", difficulty: "medium" },
-  { id: 19, question: "Is Bitcoin a cryptocurrency?", a: "Yes", b: "No", answer: true, category: "general", difficulty: "medium" },
-  { id: 20, question: "Is logic a branch of philosophy?", a: "Yes", b: "No", answer: true, category: "logic", difficulty: "medium" },
+  /* ================= MEDIUM ================= */
 
-  // ================= HARD =================
-  { id: 21, question: "Did Einstein develop the theory of relativity?", a: "Yes", b: "No", answer: true, category: "science", difficulty: "hard" },
-  { id: 22, question: "Is Gödel known for incompleteness theorems?", a: "Yes", b: "No", answer: true, category: "logic", difficulty: "hard" },
-  { id: 23, question: "Did Kant write 'Critique of Pure Reason'?", a: "Yes", b: "No", answer: true, category: "philosophy", difficulty: "hard" },
-  { id: 24, question: "Is Schrödinger associated with quantum mechanics?", a: "Yes", b: "No", answer: true, category: "science", difficulty: "hard" },
-  { id: 25, question: "Did Hobbes write 'Leviathan'?", a: "Yes", b: "No", answer: true, category: "philosophy", difficulty: "hard" },
-  { id: 26, question: "Is entropy a measure of disorder?", a: "Yes", b: "No", answer: true, category: "science", difficulty: "hard" },
-  { id: 27, question: "Is Machiavelli known for 'The Prince'?", a: "Yes", b: "No", answer: true, category: "politics", difficulty: "hard" },
-  { id: 28, question: "Is a black hole defined by an event horizon?", a: "Yes", b: "No", answer: true, category: "science", difficulty: "hard" },
-  { id: 29, question: "Did Nietzsche write 'Thus Spoke Zarathustra'?", a: "Yes", b: "No", answer: true, category: "philosophy", difficulty: "hard" },
-  { id: 30, question: "Is calculus used to study change and motion?", a: "Yes", b: "No", answer: true, category: "math", difficulty: "hard" },
+  { id: 10, question: "Does light travel faster than sound?", a: "Yes", b: "No", answer: true, category: "science", difficulty: "medium" },
+  { id: 11, question: "Is Pi irrational?", a: "Yes", b: "No", answer: true, category: "math", difficulty: "medium" },
+  { id: 12, question: "Did Plato teach Aristotle?", a: "Yes", b: "No", answer: true, category: "philosophy", difficulty: "medium" },
 
-  // ================= MIXED KNOWLEDGE (31–100) =================
-  ...Array.from({ length: 70 }).map((_, i) => ({
-    id: 31 + i,
-    question: `General knowledge question #${31 + i}: Is this statement true?`,
-    a: "Yes",
-    b: "No",
-    answer: Math.random() > 0.5,
-    category: ["science", "philosophy", "politics", "math", "logic", "general"][i % 6] as Category,
-    difficulty: (i % 3 === 0 ? "easy" : i % 3 === 1 ? "medium" : "hard") as Difficulty,
-  })),
+  /* ================= HARD ================= */
+
+  { id: 20, question: "Is Gödel's incompleteness theorem about limits of formal systems?", a: "Yes", b: "No", answer: true, category: "logic", difficulty: "hard" },
+  { id: 21, question: "Did Einstein propose spacetime curvature causes gravity?", a: "Yes", b: "No", answer: true, category: "science", difficulty: "hard" },
+
+  /* ================= PARADOX QUESTIONS ================= */
+
+  { id: 30, question: "If Pinocchio says 'My nose will grow now', is the statement paradoxical?", a: "Yes", b: "No", answer: true, category: "paradox", difficulty: "hard" },
+  { id: 31, question: "Is the Liar Paradox logically consistent?", a: "Yes", b: "No", answer: false, category: "paradox", difficulty: "hard" },
+  { id: 32, question: "Is 'This statement is false' a paradox?", a: "Yes", b: "No", answer: true, category: "paradox", difficulty: "medium" },
+  { id: 33, question: "Does the Ship of Theseus question identity over time?", a: "Yes", b: "No", answer: true, category: "philosophy", difficulty: "medium" },
+
+  /* ================= COGNITIVE BIAS TRAPS ================= */
+
+  { id: 40, question: "Is confirmation bias the tendency to seek information that confirms beliefs?", a: "Yes", b: "No", answer: true, category: "cognitive", difficulty: "medium" },
+  { id: 41, question: "Does the availability heuristic make rare events seem common?", a: "Yes", b: "No", answer: true, category: "cognitive", difficulty: "hard" },
+  { id: 42, question: "Is the sunk cost fallacy rational?", a: "Yes", b: "No", answer: false, category: "cognitive", difficulty: "hard" },
+  { id: 43, question: "Does the Dunning-Kruger effect describe overconfidence among low-skill individuals?", a: "Yes", b: "No", answer: true, category: "cognitive", difficulty: "medium" },
+
+  /* ================= QUANTUM PHYSICS ================= */
+
+  { id: 50, question: "Can particles exist in superposition?", a: "Yes", b: "No", answer: true, category: "quantum", difficulty: "medium" },
+  { id: 51, question: "Does Schrödinger's cat represent quantum superposition?", a: "Yes", b: "No", answer: true, category: "quantum", difficulty: "medium" },
+  { id: 52, question: "Does observation collapse the wave function?", a: "Yes", b: "No", answer: true, category: "quantum", difficulty: "hard" },
+  { id: 53, question: "Is quantum entanglement faster than light communication?", a: "Yes", b: "No", answer: false, category: "quantum", difficulty: "hard" },
+
+  /* ================= PHILOSOPHY THOUGHT EXPERIMENTS ================= */
+
+  { id: 60, question: "Is the Trolley Problem about moral decision-making?", a: "Yes", b: "No", answer: true, category: "philosophy", difficulty: "medium" },
+  { id: 61, question: "Does the Brain-in-a-Vat challenge knowledge of reality?", a: "Yes", b: "No", answer: true, category: "philosophy", difficulty: "hard" },
+  { id: 62, question: "Is 'Cogito, ergo sum' Descartes’ proof of existence?", a: "Yes", b: "No", answer: true, category: "philosophy", difficulty: "medium" },
+  { id: 63, question: "Does the Experience Machine question hedonism?", a: "Yes", b: "No", answer: true, category: "philosophy", difficulty: "hard" },
+
+  /* ================= LOGIC PUZZLES DISGUISED AS YES/NO ================= */
+
+  { id: 70, question: "If all humans are mortal and Socrates is human, is Socrates mortal?", a: "Yes", b: "No", answer: true, category: "logic", difficulty: "easy" },
+  { id: 71, question: "If A implies B and A is true, must B be true?", a: "Yes", b: "No", answer: true, category: "logic", difficulty: "medium" },
+  { id: 72, question: "Is 'All ravens are black' logically equivalent to 'All non-black things are not ravens'?", a: "Yes", b: "No", answer: true, category: "logic", difficulty: "hard" },
+  { id: 73, question: "If a statement and its negation are both true, is the system inconsistent?", a: "Yes", b: "No", answer: true, category: "logic", difficulty: "hard" },
 ];

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import SwipeCards from "./SwipeCards";
 import StaticCard from "./StaticCard";
 import type { Question, Difficulty } from "@/lib/questions";
 import { getTrashLine } from "@/lib/trashEngine";
@@ -24,9 +23,8 @@ export default function DuelGame() {
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
 
   /* ================= AI TRASH ================= */
-  async function updateTrash() {
-    const line = await getTrashLine();
-    setTrashTalk(line);
+  function updateTrash() {
+    getTrashLine().then(setTrashTalk).catch(() => {});
   }
 
   /* ================= INIT ================= */
@@ -36,8 +34,8 @@ export default function DuelGame() {
     const q1 = getNextQuestion();
     const q2 = peekNextQuestion();
 
-    setCurrent(q1);
-    setNextQ(q2);
+    setCurrent(q1 ?? null);
+    setNextQ(q2 ?? null);
     updateTrash();
   }, [difficulty]);
 
@@ -48,11 +46,10 @@ export default function DuelGame() {
     }
   }
 
-  /* ================= SWIPE HANDLER ================= */
-  async function handleSwipe(choice: "a" | "b") {
+  /* ================= ANSWER HANDLER ================= */
+  function handleAnswer(choice: "a" | "b") {
     if (!current) return;
 
-    // Normalize correct answer (supports boolean OR "a"/"b")
     const correctAnswer =
       typeof (current as any).answer === "boolean"
         ? ((current as any).answer ? "a" : "b")
@@ -74,12 +71,12 @@ export default function DuelGame() {
 
     updateTrash();
 
-    /* ===== SHIFT STACK ===== */
+    /* SHIFT STACK */
     const newCurrent = nextQ ?? getNextQuestion();
     const newNext = getNextQuestion();
 
-    setCurrent(newCurrent);
-    setNextQ(newNext);
+    setCurrent(newCurrent ?? null);
+    setNextQ(newNext ?? null);
   }
 
   /* ================= RESET ================= */
@@ -92,8 +89,8 @@ export default function DuelGame() {
     const q1 = getNextQuestion();
     const q2 = peekNextQuestion();
 
-    setCurrent(q1);
-    setNextQ(q2);
+    setCurrent(q1 ?? null);
+    setNextQ(q2 ?? null);
     updateTrash();
   }
 
@@ -158,12 +155,30 @@ export default function DuelGame() {
         {/* NEXT CARD */}
         {nextQ && (
           <div className="absolute scale-[0.94] translate-y-2">
-            <StaticCard question={nextQ} />
+            <StaticCard key={nextQ.id} question={nextQ} />
           </div>
         )}
 
-        {/* CURRENT CARD */}
-        {current && <SwipeCards question={current} onSwipe={handleSwipe} />}
+        {/* CURRENT CARD (BUTTON MODE) */}
+        {current && (
+          <div className="bg-black border border-purple-500/40 rounded-3xl p-6 text-white w-[92%] max-w-[380px] h-[75%] flex flex-col justify-center text-center shadow-2xl z-20">
+            <h2 className="text-xl font-bold mb-10">{current.question}</h2>
+
+            <button
+              onClick={() => handleAnswer("a")}
+              className="bg-blue-600 py-3 rounded-lg mb-4 font-semibold hover:scale-105 transition"
+            >
+              {current.a}
+            </button>
+
+            <button
+              onClick={() => handleAnswer("b")}
+              className="bg-red-600 py-3 rounded-lg font-semibold hover:scale-105 transition"
+            >
+              {current.b}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* RESET */}

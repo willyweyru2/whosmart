@@ -2,14 +2,17 @@
 
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import type { Question } from "@/lib/questions"; // ✅ FIXED PATH
+import type { Question } from "@/lib/questions";
 
-/* CATEGORY COLORS */
-const CATEGORY_COLORS: Record<Question["category"], string> = {
+/* CATEGORY COLORS (SAFE FALLBACK) */
+const CATEGORY_COLORS: Record<string, string> = {
   science: "bg-green-600",
   logic: "bg-purple-600",
   math: "bg-blue-600",
   trick: "bg-red-600",
+  philosophy: "bg-yellow-600",
+  politics: "bg-pink-600",
+  general: "bg-gray-600",
 };
 
 export default function SwipeCards({
@@ -31,7 +34,7 @@ export default function SwipeCards({
   const [aiGuess, setAiGuess] = useState<"a" | "b">("a");
   const hasSwiped = useRef(false);
 
-  /* RESET CARD */
+  /* RESET CARD ON NEW QUESTION */
   useEffect(() => {
     x.stop();
     x.set(0);
@@ -39,10 +42,12 @@ export default function SwipeCards({
 
     const bias = Math.random() < 0.5 ? "a" : "b";
     setAiGuess(bias);
-  }, [question.id]);
+  }, [question.id, x]);
 
   function vibrate(ms: number) {
-    if (navigator.vibrate) navigator.vibrate(ms);
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate(ms);
+    }
   }
 
   async function throwCard(choice: "a" | "b") {
@@ -71,7 +76,7 @@ export default function SwipeCards({
   return (
     <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
 
-      {/* Glow */}
+      {/* Glow Effects */}
       <motion.div
         style={{ opacity: rightGlow }}
         className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-blue-500/40 to-transparent pointer-events-none"
@@ -81,18 +86,18 @@ export default function SwipeCards({
         className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-red-500/40 to-transparent pointer-events-none"
       />
 
-      {/* Card */}
+      {/* CARD */}
       <motion.div
+        key={question.id} // ✅ CRITICAL FIX
         drag="x"
-        dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.2}
         onDragEnd={handleDragEnd}
         style={{ x, rotate, opacity }}
         whileDrag={{ scale: 1.03 }}
         className="w-[92%] max-w-[380px] h-[75%] bg-black border border-purple-500/40 rounded-3xl p-6 text-white flex flex-col justify-center text-center shadow-2xl select-none"
       >
-        {/* Category */}
-        <div className={`absolute top-3 left-3 px-2 py-1 text-xs rounded-full ${CATEGORY_COLORS[question.category]}`}>
+        {/* Category Badge */}
+        <div className={`absolute top-3 left-3 px-2 py-1 text-xs rounded-full ${CATEGORY_COLORS[question.category] || "bg-gray-700"}`}>
           {question.category}
         </div>
 
