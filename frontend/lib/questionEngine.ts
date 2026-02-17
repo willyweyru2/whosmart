@@ -1,31 +1,32 @@
 // lib/questionEngine.ts
-import { QUESTIONS as questions, Question, Difficulty } from "./questions";
 
-// shuffle once per session
+import { QUESTIONS, Question, Difficulty } from "./questions";
+
+/* Shuffle pool */
 let pool: Question[] = [];
-let index = 0;
-let currentDifficulty: Difficulty = "medium";
 
-function shuffle(arr: Question[]) {
-  return arr.sort(() => Math.random() - 0.5);
+/* Reset pool by difficulty */
+export function resetQuestionPool(diff: Difficulty) {
+  pool = QUESTIONS.filter(q => q.difficulty === diff);
+
+  // fallback if empty
+  if (pool.length === 0) pool = QUESTIONS;
+
+  pool = pool.sort(() => Math.random() - 0.5);
 }
 
-export function resetQuestionPool(diff: Difficulty = "medium") {
-  currentDifficulty = diff;
-  pool = shuffle(questions.filter(q => q.difficulty === diff));
-  index = 0;
-}
-
-// preload next question without advancing pointer
-export function peekNextQuestion(): Question {
-  if (!pool.length) resetQuestionPool(currentDifficulty);
-  return pool[index % pool.length];
-}
-
-// advance pointer
+/* Get next question */
 export function getNextQuestion(): Question {
-  if (!pool.length) resetQuestionPool(currentDifficulty);
-  const q = pool[index % pool.length];
-  index++;
-  return q;
+  if (pool.length === 0) {
+    resetQuestionPool("medium");
+  }
+  return pool.shift()!;
+}
+
+/* Peek next question */
+export function peekNextQuestion(): Question {
+  if (pool.length === 0) {
+    resetQuestionPool("medium");
+  }
+  return pool[0];
 }
